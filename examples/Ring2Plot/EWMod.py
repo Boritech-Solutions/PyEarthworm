@@ -44,7 +44,7 @@ class Ring2Plot():
      
     # Store in mongodb
     if wave['station'] not in self.db.collection_names():
-      self.db[wave['station']].ensure_index("time", expireAfterSeconds=3*60)
+      self.db.create_collection(wave['station'], capped=True, size=10000000)
     wave_id = self.db[wave['station']].insert_one(wave).inserted_id
     
     #print(wave_id)

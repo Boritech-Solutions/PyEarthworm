@@ -34,6 +34,15 @@ Template.info.events({
   }
 });
 
+Template.graph.helpers({
+  foo() {
+    return Session.get("Sta");
+  },
+  doo() {
+    return Session.get("Chan");
+  }
+});
+
 Template.graph.onRendered(function () {
   var sta = Session.get("Sta");
   var cha = Session.get("Chan");

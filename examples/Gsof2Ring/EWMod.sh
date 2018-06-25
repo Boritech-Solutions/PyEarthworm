@@ -186,7 +186,7 @@ class Gsof(object):
 def main():
 
     parser = argparse.ArgumentParser(description='This is a Trimble GSOF message parser')
-    parser.add_argument('-i', action="store", dest="IP",   default="192.168.2.31", type=str)
+    parser.add_argument('-i', action="store", dest="IP",   default="localhost", type=str)
     parser.add_argument('-p', action="store", dest="PORT", default=28001,          type=int)
     parser.add_argument('-r', action="store", dest="RING", default=1000,           type=int)
     parser.add_argument('-m', action="store", dest="MODID",default=8,              type=int)

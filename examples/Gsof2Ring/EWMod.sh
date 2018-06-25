@@ -1,4 +1,4 @@
-#!/home/francisco/Programs/home/francisco/.miniconda3/bin/python
+#!/usr/bin/env python
 from struct import unpack
 import functools
 import PyEW

@@ -68,6 +68,9 @@ def main():
     Mod.add_ring(results.RING)
     
     for line in readlines(sock):
+      if quitting:
+        Mod.goodbye()
+        break
       # Read NMEA msg:
       if "GPGGA" in line:
         msg = pynmea2.parse(line)
@@ -132,5 +135,5 @@ if __name__ == '__main__':
     except KeyboardInterrupt:
         #outfile.close
         quitting = True
-        sys.exit()
+        quit()
         print("\nSTATUS: Stopping, you hit ctl+C. ")

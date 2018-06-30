@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 import PyEW
 import pynmea2
 import socket

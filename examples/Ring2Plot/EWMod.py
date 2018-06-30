@@ -53,6 +53,8 @@ class Ring2Plot():
   
     # The main loop
     while self.runs:
+      if self.ring2plot.mod_sta() is false:
+        break
       time.sleep(0.001)
       self.plot_wave()
     self.ring2plot.goodbye()

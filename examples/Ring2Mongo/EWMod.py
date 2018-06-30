@@ -53,6 +53,8 @@ class Ring2Mongo():
   
     # The main loop
     while self.runs:
+      if self.ring2ring.mod_sta() is False:
+        break
       time.sleep(0.001)
       self.push_wave()
     self.ring2mongo.goodbye()

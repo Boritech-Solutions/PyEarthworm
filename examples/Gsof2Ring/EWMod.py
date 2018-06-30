@@ -286,6 +286,8 @@ class Gsof2Ring():
   
     # The main loop
     while self.runs:
+      if self.ring2ring.mod_sta() is False:
+        break
       time.sleep(0.001)
       self.getGps()
     self.gsof2ring.goodbye()

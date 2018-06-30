@@ -138,12 +138,12 @@ class Bnc2Ring():
   def run(self):
     for line in self.readlines(self.sock):
       time.sleep(0.001)
-      if self.runs is False:
+      if self.runs is False and self.bnc2ring.mod_sta() is False:
         break
       self.getGPS(line)
     print "Goodbye"
-    self.sock.close()
     self.bnc2ring.goodbye()
+    self.sock.close()
     quit()
   
   def start(self):

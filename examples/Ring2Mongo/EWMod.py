@@ -53,11 +53,12 @@ class Ring2Mongo():
   
     # The main loop
     while self.runs:
-      if self.ring2ring.mod_sta() is False:
+      if self.ring2mongo.mod_sta() is False:
         break
       time.sleep(0.001)
       self.push_wave()
     self.ring2mongo.goodbye()
+    self.client.close()
     quit()
     print ("Exiting")
       
@@ -66,5 +67,4 @@ class Ring2Mongo():
     
   def stop(self):
     self.runs = False
-    self.client.close()
     

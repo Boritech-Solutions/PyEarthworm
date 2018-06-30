@@ -66,6 +66,7 @@ class Bnc2Ring():
     data = True
     while data:
       if self.runs is False:
+        print "No longer listening to BNC"
         break
       data = sock.recv(recv_buffer)
       buffer += data
@@ -138,10 +139,10 @@ class Bnc2Ring():
   def run(self):
     for line in self.readlines(self.sock):
       time.sleep(0.001)
-      if self.runs is False and self.bnc2ring.mod_sta() is False:
+      if self.runs is False or self.bnc2ring.mod_sta() is False:
+        self.runs = False
         break
       self.getGPS(line)
-    print "Goodbye"
     self.bnc2ring.goodbye()
     self.sock.close()
     quit()

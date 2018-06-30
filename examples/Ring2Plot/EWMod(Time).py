@@ -58,6 +58,7 @@ class Ring2Plot():
       time.sleep(0.001)
       self.plot_wave()
     self.ring2plot.goodbye()
+    self.client.close()
     quit()
     print ("Exiting")
       
@@ -66,5 +67,4 @@ class Ring2Plot():
     
   def stop(self):
     self.runs = False
-    self.client.close()
     

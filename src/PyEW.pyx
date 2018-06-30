@@ -202,6 +202,7 @@ cdef class EWModule:
     self.HBT.start()
     self.RNG.setup(self.my_ring, self.my_modid, self.my_instid, self.goodbye)
     self.RNG.start()
+    self.OK = True
     
   def send_hb(self): 
     msg = str(round(time.time())) + ' ' + str(os.getpid())
@@ -217,7 +218,11 @@ cdef class EWModule:
       ring.detach()
     time.sleep(self.hb)
     print("Graceful Shutdown")
+    self.OK = False
     quit()
+  
+  def mod_sta(self):
+    return self.OK
 
   def req_syssta(self):
     print "Requesting system status"

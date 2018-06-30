@@ -1,3 +1,4 @@
+#!/usr/bin/python
 import PyEW
 import pynmea2
 import socket
@@ -42,18 +43,18 @@ PRSN_Y=-5584618.6433
 PRSN_Z=1981221.1234
 
 quitting = False
+sock = socket.socket()
 
 def main():
     parser = argparse.ArgumentParser(description='This is a BNC NMEA message parser')
-    parser.add_argument('-i', action="store", dest="IP",   default="localhost", type=str)
+    parser.add_argument('-i', action="store", dest="IP",   default="localhost",   type=str)
     parser.add_argument('-p', action="store", dest="PORT", default=4000,          type=int)
-    parser.add_argument('-r', action="store", dest="RING", default=1000,           type=int)
-    parser.add_argument('-m', action="store", dest="MODID",default=8,              type=int)
+    parser.add_argument('-r', action="store", dest="RING", default=1000,          type=int)
+    parser.add_argument('-m', action="store", dest="MODID",default=8,             type=int)
     
     results = parser.parse_args()
     
     # Connect to BNC NMEA
-    sock = socket.socket()
     sock.connect((results.IP, results.PORT))
      
     # Connect to EW
@@ -68,7 +69,9 @@ def main():
     Mod.add_ring(results.RING)
     
     for line in readlines(sock):
+      time.sleep(0.001)
       if quitting:
+        print 'goodbye'
         Mod.goodbye()
         break
       # Read NMEA msg:
@@ -77,8 +80,11 @@ def main():
         xval, yval, zval = LLHtoECEF(msg.latitude, msg.longitude, msg.altitude)
         unixdate = datetime.datetime.utcnow()
         unixtime = datetime.datetime.combine(unixdate.date(),msg.timestamp)
-        unxtime = int((unixtime - datetime.datetime.fromtimestamp(0)).total_seconds())
-        #print unxtime, msg
+        
+        # Convert to Timestamp once more I guess
+        unxtime = int((unixtime - datetime.datetime.utcfromtimestamp(0)).total_seconds())
+        
+        #print unxtime
         
         # Create EW Wave to send
         xdat = (xval-PRSN_X)*1000
@@ -134,6 +140,6 @@ if __name__ == '__main__':
         main()
     except KeyboardInterrupt:
         #outfile.close
+        sock.close()
         quitting = True
-        quit()
         print("\nSTATUS: Stopping, you hit ctl+C. ")

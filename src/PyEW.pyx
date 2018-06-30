@@ -186,6 +186,7 @@ cdef class EWModule:
   cdef int hb
   cdef transport default_ring
   cdef bint debug
+  cdef bint OK
   HBT = heartbeatTimer()
   RNG = stopThread()
   ringcom = []
@@ -204,70 +205,76 @@ cdef class EWModule:
     self.RNG.start()
     self.OK = True
     
-  def send_hb(self): 
+  def send_hb(self):
     msg = str(round(time.time())) + ' ' + str(os.getpid())
     mymsg = msg.encode('UTF-8')
     cdef char* message = mymsg
-    self.default_ring.putmsg(3, message, len(message))
-
+    if self.OK:
+      self.default_ring.putmsg(3, message, len(message))
+  
   def goodbye(self):
-    self.HBT.stop()
-    self.RNG.stop()
-    self.default_ring.detach()
-    for ring in self.ringcom:
-      ring.detach()
-    time.sleep(self.hb)
-    print("Graceful Shutdown")
-    self.OK = False
-    quit()
+    if self.OK:
+      self.OK = False
+      self.HBT.stop()
+      self.RNG.stop()
+      self.default_ring.detach()
+      for ring in self.ringcom:
+        ring.detach()
+      time.sleep(self.hb)
+      print("Graceful Shutdown")
+      quit()
   
   def mod_sta(self):
     return self.OK
-
+  
   def req_syssta(self):
-    print "Requesting system status"
-    msg = self.default_ring.reqsta()
-    status = msg[1][:msg[0]].decode('UTF-8')
-    print status
-
+    if self.OK:
+      print "Requesting system status"
+      msg = self.default_ring.reqsta()
+      status = msg[1][:msg[0]].decode('UTF-8')
+      print status
+  
   def add_ring(self, ring_id):
-    print "Add ring to array"
-    temp = transport(ring_id, self.my_modid, self.my_instid)
-    temp.flush()
-    self.ringcom.append(temp)
+    if self.OK:
+      print "Add ring to array"
+      temp = transport(ring_id, self.my_modid, self.my_instid)
+      temp.flush()
+      self.ringcom.append(temp)
   
   def get_bytes(self, buf_ring, msg_type):
     if self.debug:
       print "Get msg from array"
-    if buf_ring < len(self.ringcom):
+    if buf_ring < len(self.ringcom) and self.OK:
       msg = self.ringcom[buf_ring].copymsg_type(msg_type)
       if msg != (0,0):
         if self.debug:
           status = msg[2][:msg[1]].decode('UTF-8')
           print status
       return msg
+    return ''
   
   def get_msg(self, buf_ring, msg_type):
     if self.debug:
       print "Get msg from array"
-    if buf_ring < len(self.ringcom):
+    if buf_ring < len(self.ringcom) and self.OK:
       msg = self.ringcom[buf_ring].copymsg_type(msg_type)
       if msg != (0,0):
         if self.debug:
           status = msg[2][:msg[1]].decode('UTF-8')
           print status
       return status
-      
+    return ''
+  
   def put_bytes(self, buf_ring, msg_type, msg):
     if self.debug:
       print "Put msg into array"
-    if buf_ring < len(self.ringcom):
+    if buf_ring < len(self.ringcom) and self.OK:
       self.ringcom[buf_ring].putmsg(msg_type, msg, len(msg))
   
   def put_msg(self, buf_ring, msg_type, msg):
     if self.debug:
       print "Put msg into array"
-    if buf_ring < len(self.ringcom):
+    if buf_ring < len(self.ringcom) and self.OK:
       self.ringcom[buf_ring].putmsg(msg_type, msg.encode('UTF-8'), len(msg.encode('UTF-8')))
   
   def get_wave(self, buf_ring):
@@ -278,7 +285,7 @@ cdef class EWModule:
     cdef char* mymsg
     cdef char* pkt
     
-    if buf_ring < len(self.ringcom):
+    if buf_ring < len(self.ringcom) and self.OK:
       msg = self.ringcom[buf_ring].copymsg_type(19)
       if msg != (0,0):
         mymsg = msg[2]
@@ -310,6 +317,7 @@ cdef class EWModule:
         return data
       else:
         return {}
+    return {}
   
   def put_wave(self, buf_ring, msg):
     if self.debug:
@@ -415,5 +423,6 @@ cdef class EWModule:
       
     pkt = <char*> &mypkt
     
-    self.ringcom[buf_ring].putmsg(19, pkt[:length], length)
-    
+    if self.OK:
+      self.ringcom[buf_ring].putmsg(19, pkt[:length], length)
+

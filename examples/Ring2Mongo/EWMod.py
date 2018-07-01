@@ -44,7 +44,7 @@ class Ring2Mongo():
      
     # Store in mongodb
     if wave['station'] not in self.db.list_collection_names():
-      self.db.create_collection(wave['station'], capped=True, size=10000000)
+      self.db.create_collection(wave['station'], capped=True, size=10000000) #10Mb Ring
     wave_id = self.db[wave['station']].insert_one(wave).inserted_id
     
     #print(wave_id)

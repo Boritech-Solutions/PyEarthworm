@@ -15,7 +15,7 @@ class Mongo2Ring():
     self.client = MongoClient()
     
     # Start an EW Module with parent ring 1000, mod_id 8, inst_id 141, heartbeat 30s, debug = False
-    self.mongo2ring = PyEW.EWModule(1000, 8, 141, 30.0, False) 
+    self.mongo2ring = PyEW.EWModule(1000, 9, 141, 30.0, False) 
     self.client = MongoClient('mongodb://localhost:27017/')
     
     # Add our Output ring as Ring 0
@@ -32,15 +32,22 @@ class Mongo2Ring():
         for insert_change in stream:
           if self.mongo2ring.mod_sta() is False or self.runs is  False:
             break
+          ## Get the wave
           wave = insert_change['fullDocument']
+          
+          ## Change the data from list to numpy array
           wf = wave['data']
           dt = np.dtype(wave['datatype'])
           wave['data'] = np.array(wf, dtype=dt)
+          
+          ## Insert wave in to ring
           self.mongo2ring.put_wave(0, wave)
+          
     except pymg.errors.PyMongoError:
       # The ChangeStream encountered an unrecoverable error or the
       # resume attempt failed to recreate the cursor.
       print ('Error getting data')
+    
     self.mongo2ring.goodbye()
     self.client.close()
     quit()

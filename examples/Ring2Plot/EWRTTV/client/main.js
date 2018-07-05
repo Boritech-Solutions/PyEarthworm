@@ -140,8 +140,8 @@ Template.graph.onRendered(function () {
   
   var layoutN = {
     title: 'Station ' + sta + ', Channel ' + chaN,
-    xaxis: {
-      title: 'Time',
+    yaxis: {
+      title: 'Counts',
       titlefont: {
         family: 'Courier New, monospace',
         size: 18,
@@ -152,8 +152,8 @@ Template.graph.onRendered(function () {
   
   var layoutE = {
     title: 'Station ' + sta + ', Channel ' + chaE,
-    xaxis: {
-      title: 'Time',
+    yaxis: {
+      title: 'Counts',
       titlefont: {
         family: 'Courier New, monospace',
         size: 18,
@@ -164,8 +164,8 @@ Template.graph.onRendered(function () {
   
   var layoutZ = {
     title: 'Station ' + sta + ', Channel ' + chaZ,
-    xaxis: {
-      title: 'Time',
+    yaxis: {
+      title: 'Counts',
       titlefont: {
         family: 'Courier New, monospace',
         size: 18,

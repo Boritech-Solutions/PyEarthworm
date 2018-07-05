@@ -1,5 +1,6 @@
 #    Ring2Mongo is an example of how to use PyEW to interface the EW Transport system to MongoDB for transport (Time limit)
 #    Copyright (C) 2018  Francisco J Hernandez Ramirez
+#    You may contact me at FJHernandez89@gmail.com, FHernandez@boritechsolutions.com
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU Affero General Public License as published by

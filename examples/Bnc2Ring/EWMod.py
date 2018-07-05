@@ -1,3 +1,19 @@
+#    BNC2Ring is an example of how to use PyEW to interface NMEA messages from BNC to the EW Transport system.
+#    Copyright (C) 2018  Francisco J Hernandez Ramirez
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU Affero General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU Affero General Public License for more details.
+#
+#    You should have received a copy of the GNU Affero General Public License
+#    along with this program.  If not, see <https://www.gnu.org/licenses/>
+
 import PyEW
 import pynmea2
 import socket
@@ -46,7 +62,7 @@ class Bnc2Ring():
     # Connect to BNC NMEA
     self.sock.connect((IP, PORT))
      
-    # Connect to EW
+    # Start an EW Module with parent ring 1000, mod_id 8, inst_id 141, heartbeat 30s, debug = False (MODIFY THIS!)
     self.bnc2ring = PyEW.EWModule(1000, 8, 141, 30.0, False)
     self.Station = Station
     self.Network = Network

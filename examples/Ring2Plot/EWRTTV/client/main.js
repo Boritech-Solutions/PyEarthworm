@@ -138,15 +138,51 @@ Template.graph.onRendered(function () {
     line: {color: '#80CAF6'}
   }];
   
+  var layoutN = {
+    title: 'Station ' + sta + ', Channel ' + chaN,
+    xaxis: {
+      title: 'Time',
+      titlefont: {
+        family: 'Courier New, monospace',
+        size: 18,
+        color: '#7f7f7f'
+      }
+    },
+  };
+  
+  var layoutE = {
+    title: 'Station ' + sta + ', Channel ' + chaE,
+    xaxis: {
+      title: 'Time',
+      titlefont: {
+        family: 'Courier New, monospace',
+        size: 18,
+        color: '#7f7f7f'
+      }
+    },
+  };
+  
+  var layoutZ = {
+    title: 'Station ' + sta + ', Channel ' + chaZ,
+    xaxis: {
+      title: 'Time',
+      titlefont: {
+        family: 'Courier New, monospace',
+        size: 18,
+        color: '#7f7f7f'
+      }
+    },
+  };
+  
   // Plot
   var gelementN = this.$('#graphN')[0];
-  Plotly.plot(gelementN, ndata);
+  Plotly.plot(gelementN, ndata, layoutN);
   
   var gelementE = this.$('#graphE')[0];
-  Plotly.plot(gelementE, edata);
+  Plotly.plot(gelementE, edata, layoutE);
   
   var gelementZ = this.$('#graphZ')[0];
-  Plotly.plot(gelementZ, zdata);
+  Plotly.plot(gelementZ, zdata, layoutZ);
   
   // Roll changes
   var cnt = 0;

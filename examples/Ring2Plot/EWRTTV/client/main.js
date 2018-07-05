@@ -1,3 +1,20 @@
+//    Earthworm Real Time Trace Viewer is a program that takes in changes from MongoDB and plots data using plotly and javascript
+//    Copyright (C) 2018  Francisco J Hernandez Ramirez
+//    You may contact me at FJHernandez89@gmail.com, FHernandez@boritechsolutions.com
+//
+//    This program is free software: you can redistribute it and/or modify
+//    it under the terms of the GNU Affero General Public License as published by
+//    the Free Software Foundation, either version 3 of the License, or
+//    (at your option) any later version.
+//
+//    This program is distributed in the hope that it will be useful,
+//    but WITHOUT ANY WARRANTY; without even the implied warranty of
+//    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//    GNU Affero General Public License for more details.
+//
+//    You should have received a copy of the GNU Affero General Public License
+//    along with this program.  If not, see <https://www.gnu.org/licenses/>
+
 import { Template } from 'meteor/templating';
 import { ReactiveVar } from 'meteor/reactive-var';
 import { get_collection } from '../lib/collection_manager.js';

@@ -32,7 +32,7 @@ The main class for communication with earthworm is PyEW.EWModule. It is a class 
 
 #### PyEW.EWModule:
   * **PyEW.EWModule(def_ring, mod_id, inst_id, hb_time, db):**  
-  This will initiate a EW Module object with a default ring: def_ring, module id: mod_id, installation id: inst_id, heartbeat interval: hb_time, and debuging set to FALSE (by default). This module will initiate a heartbeat thread that will start by default, it will initate a listener by default to stop if EW emitts a stop message. These listeners and heartbeats will be sent to the default ring.
+  This will initiate a EW Module object with a default ring: def_ring, module id: mod_id, installation id: inst_id, heartbeat interval: hb_time, and debuging set to FALSE (by default). This module will initiate a heartbeat thread that will start by default, it will initate a listener by default to stop if EW emitts a stop message. These listeners and heartbeats will be sent to the default ring! Any message that is sent from this module will also inherit the module id and inst id that was setup here.
   
   * **PyEW.EWModule().goodbye():**  
   This method will begin the mod shutdown if called from somewhere else. It is important to shut down all listener threads before any attempt at shutdown of a program. It will print 'Gracefull Shutdown' when ready to end.
@@ -130,6 +130,25 @@ The main class for communication with earthworm is PyEW.EWModule. It is a class 
   * The Ring2Mongo module will take wave information and store it in a mongo database (ew-waves). By default it creates a capped collection of 10 Mb for every station regardless of channel. Unless the (time) version is used it will store 3 minutes of data.
   * The Mongo2Ring module can create a listener for changes to an Mongo database that is receiving EW Wave JSON objects. It then modifies these objects in order to be able to add them to a EW Ring. A MongoDB has the advantage of being able to push to multiple listeners and sideways scalability making it ideal to connect an EW to a main database. It requires the latest MongoDB and PyMongo, due to the use of watch pointers.
   * Finally the Ring2Plot is a time limitied Ring2Mongo with a meteor nodejs application (ewrttv) that can be used to plot and display data to a browser (3 components, 1 station). A live version of this can be found [HERE](http://ewrttv.fran89.com). Additionally a single component version is availible in a different branch (singleplot).
+  
+#### To use a module:
+  To start a module you should change directory into the modules main folder and start a python shell:
+  
+    $ cd example/Ring2Ring/
+    $ python
+    >>> import EWMod
+    >>> Module = EWMod.Ring2Ring()
+    >>> Module.start()
+  
+  To stop the module:
+  
+    >>> Module.stop()
+    
+  In order to start and stop it from startstop it must be modified to start from a shell script and then place that shell script in the startstop_\*.d. Additionally a dummy .desc file must be created in the param directory and placed in statmgr.d so that your startstop doesn't get spammed with:
+  
+    UTC_Thu Jul  5 23:03:35 2018  EW/statmgr msg from unknown module  (statmgr doesn't have a .desc file for this one) inst:141 mod:8 typ:3
+  
+I hope that you can use these examples to build your own modules that are shared with the community.
   
 ### Acknowledgments
 -------------------

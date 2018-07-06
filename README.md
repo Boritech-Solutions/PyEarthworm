@@ -1,6 +1,6 @@
 # PyEW
 
-A Python interface to the Earthworm Seismic Data System
+PyEW is a python interface to the Earthworm Messaging Transport system. It seeks to create an easy to use framework to create modern earthworm modules with python. The main class handles the EW module basics such as listening to stop messages and creating heartbeats. You can then use python threads to aquire and insert data from multiple EW Rings. Wave data is already returned as a numpy array so you may use fast c-optimized algorithms with cython. It comes with multiple examples which you may modify in order to speed up development.
 
 ## Installation
 
@@ -114,7 +114,7 @@ PyEW has various classes that have various degrees of abstractions. For example:
           'samprate': python.int,
           'startt': python.int,
           'endt': python.int, # This one may be ommited and calculated on the fly.
-          'datatype': python.string, # i2, i4, "i8"?!
+          'datatype': python.string, # i2, i4, f4, ("f8" "i8"?!)
           'data': numpy.array
         }
   It must be stressed that the maximum amount of bytes cannot be more than the one specified in the EW Specification (4096). Additionally, Earthworm does not work well (if at all?) with double precision and extra care must be made when inserting data into EW.

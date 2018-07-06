@@ -435,8 +435,6 @@ cdef class EWModule:
       length = sizeof(ctracebuf.TRACE2_HEADER)+ (mypkt.trh2.nsamp * 2)
     if msg['datatype'] == 'i4':
       length = sizeof(ctracebuf.TRACE2_HEADER)+ (mypkt.trh2.nsamp * 4)
-    if msg['datatype'] == 'i8':
-      length = sizeof(ctracebuf.TRACE2_HEADER)+ (mypkt.trh2.nsamp * 8)
     if msg['datatype'] == 'f4':
       length = sizeof(ctracebuf.TRACE2_HEADER)+ (mypkt.trh2.nsamp * 4)
     if msg['datatype'] == 'f8':

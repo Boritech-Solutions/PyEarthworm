@@ -134,8 +134,8 @@ PyEW has various classes that have various degrees of abstractions. For example:
   * I would like to thank ISTI and the EW community, without their contributions to EW this software would not be possible.
   * The python and cython community.
   
-AD:
-Boritech Solutions is a consulting firm that can help you set up and create modules with PyEW Contact Us today!
+#### AD:
+Boritech Solutions is a consulting firm that can help you set up and create modules with PyEW. Contact Us today!
 www.BoritechSolutions.com
 
 ~Francisco.

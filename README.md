@@ -82,7 +82,7 @@ The main class for communication with earthworm is PyEW.EWModule. It is a class 
           'samprate': python.int,
           'startt': python.int,
           'endt': python.int, # This one may be ommited and calculated on the fly.
-          'datatype': python.string, # i2, i4, f4, ("f8" "i8"?!)
+          'datatype': python.string, # i2, i4, f4, ("f8"?!)
           'data': numpy.array
         }
   It must be stressed that the maximum amount of bytes cannot be more than the one specified in the EW Specification (4096). Additionally, Earthworm does not work well (if at all?) with double precision and extra care must be made when inserting data into EW.

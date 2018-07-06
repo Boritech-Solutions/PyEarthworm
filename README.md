@@ -61,7 +61,7 @@ PyEW has various classes that have various degrees of abstractions. For example:
   * **PyEW.transport().reqsta()**  
   This method will return a tuple with the system status.
   
-### Yet the highest abstraction layer is:
+### The highest abstraction layer and the most usable one is:
 #### PyEW.EWModule:
   * **PyEW.EWModule(def_ring, mod_id, inst_id, hb_time, db):**  
   This will initiate a EW Module object with a default ring: def_ring, module id: mod_id, installation id: inst_id, heartbeat interval: hb_time, and debuging set to FALSE (by default). This module will initiate a heartbeat thread that will start by default, it will initate a listener by default to stop if EW emitts a stop message. These listeners and heartbeats will be sent to the default ring.

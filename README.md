@@ -15,7 +15,7 @@ We suggest the usage of Anaconda for deployment:
 
 ### Procedure
 
-These commands take place in the PyEW directory:
+These commands take place in the PyEW directory (and having sourced the EW enviorment!):
 
     $ cd src/
     $ python setup.py build_ext -i
@@ -103,18 +103,29 @@ PyEW has various classes that have various degrees of abstractions. For example:
         }
         
   * **PyEW.EWModule().put_wave(buf_ring, msg):**
-  This method will attempt to insert a wave message into the memory buffer at location: buf_ring __(ring must have been added from the add_ring() method in order for this to work)__. The message will be a python dictionary of the following information:  
+  This method will attempt to insert a wave message into the memory buffer at location: buf_ring __(ring must have been added from the add_ring() method in order for this to work)__. The message must be a python dictionary of the following information:  
   
         {
-          'station': python.string,
-          'network': python.string,
-          'channel': python.string,
-          'location': python.string,
+          'station': python.string, # 4 Sta max 
+          'network': python.string, # 2 Net max
+          'channel': python.string, # 3 Cha max
+          'location': python.string,# 2 Cha max
           'nsamp': python.int,
           'samprate': python.int,
           'startt': python.int,
           'endt': python.int, # This one may be ommited and calculated on the fly.
-          'datatype': python.string,
+          'datatype': python.string, # i2, i4, "i8"?!
           'data': numpy.array
         }
+  It must be stressed that the maximum amount of bytes cannot be more than the one specified in the EW Specification 4096. Additionally, Earthworm does not work well (if at all?) with double precision and extra care must be made when inserting data into EW.
+  
+## Examples:
+  Included with PyEW is a series of examples that may help you in figuring out how this works:
+  * The Ring2Ring module is a reimagined in python Ring2Ring module. It has no way to filter, however it can be added to suit your needs. It may have multiple input and output rings and can be used to collapse multiple ring2ring instances.
+  * The BNC2Ring module is essentially a NMEAString2EW module that will take input from BNC PPP and place it in a EW Ring.
+  * The gsof2Ring module is a modified version of UNAVCOS python script to read gsof and insert them into an EW Ring.
+  * The Ring2Mongo module will take wave information and store it in a mongo database (ew-waves). By default it creates a capped collection of 10 Mb for every station regardless of channel. Unless the (time) version is used it will store 3 minutes of data.
+  * The Mongo2Ring module adds listeners in order to better transmit data from a MongoDB to another from a central database. It requires the latest MongoDB and PyMongo, due to the use of watch pointers.
+  * Finally the Ring2Plot is a time limitied Ring2Mongo with a meteor nodejs application (ewrttv) that can be used to plot and display data to a browser (3 components, 1 station). A live version of this can be found here: ewrttv.fran89.com. Additionally a single component version is availible in a different branch (singleplot).
+  
 

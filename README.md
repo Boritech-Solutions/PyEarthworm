@@ -87,7 +87,7 @@ The main class for communication with earthworm is PyEW.EWModule. It is a class 
         }
   It must be stressed that the maximum amount of bytes cannot be more than the one specified in the EW Specification (4096). Additionally, Earthworm does not work well (if at all?) with double precision and extra care must be made when inserting data into EW.
   
- However PyEW has various classes that have various degrees of abstractions, however these are more low level and should not be used unless absolutely needed. For example:
+ However PyEW has various classes that have various degrees of abstractions, these are more low level and should not be used unless absolutely needed. For example:
 
 #### PyEW.ring:
   * **PyEW.ring(ring_id):**  

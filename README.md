@@ -12,6 +12,8 @@ We suggest the usage of Anaconda for deployment:
 
     $ conda create --name PyEW
     $ conda activate PyEW
+    $ conda install numpy
+    $ conda install cython
 
 ### Procedure
 

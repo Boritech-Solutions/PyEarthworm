@@ -79,10 +79,12 @@ PyEW has various classes that have various degrees of abstractions. For example:
   This will add a ring to an internal buffer of rings. The ring id: ring_id given will add the listener. For example: Mod.add_ring(1000) will add ring **1000** at location **0**. Should you call this method again (e.g. Mod.add_ring(1005)) will add ring **1005** at location **1** and so on. You can add many rings for multiple inputs and outputs.
   
   * **PyEW.EWModule().get_bytes(buf_ring, msg_type)  
-  PyEW.EWModule().get_msg(buf_ring, msg_type):**
+  PyEW.EWModule().get_msg(buf_ring, msg_type):**  
+  These two methods will get either a bytestring (which you would have to decode) or a text string (which has been decoded for you). If nothing is found it will return an empty string.
   
   * **PyEW.EWModule().put_bytes(buf_ring, msg_type, msg)  
-  PyEW.EWModule().put_msg(buf_ring, msg_type, msg):**
+  PyEW.EWModule().put_msg(buf_ring, msg_type, msg):**  
+  Likewise these two methods will put either a bytestring or a text string into the EW ring. The lenght of the string is determined by the len() method.
   
   * PyEW.EWModule().get_wave(buf_ring)
   

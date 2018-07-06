@@ -128,7 +128,7 @@ The main class for communication with earthworm is PyEW.EWModule. It is a class 
   * The BNC2Ring module is essentially a NMEAString2EW module that will take input from BNC PPP and place it in a EW Ring.
   * The gsof2Ring module is a modified version of UNAVCOS python script to read gsof and insert them into an EW Ring.
   * The Ring2Mongo module will take wave information and store it in a mongo database (ew-waves). By default it creates a capped collection of 10 Mb for every station regardless of channel. Unless the (time) version is used it will store 3 minutes of data.
-  * The Mongo2Ring module adds listeners in order to better transmit data from a MongoDB to another from a central database. It requires the latest MongoDB and PyMongo, due to the use of watch pointers.
+  * The Mongo2Ring module can create a listener for changes to an Mongo database that is receiving EW Wave JSON objects. It then modifies these objects in order to be able to add them to a EW Ring. A MongoDB has the advantage of being able to push to multiple listeners and sideways scalability making it ideal to connect an EW to a main database. It requires the latest MongoDB and PyMongo, due to the use of watch pointers.
   * Finally the Ring2Plot is a time limitied Ring2Mongo with a meteor nodejs application (ewrttv) that can be used to plot and display data to a browser (3 components, 1 station). A live version of this can be found [HERE](http://ewrttv.fran89.com). Additionally a single component version is availible in a different branch (singleplot).
   
 ### Acknowledgments

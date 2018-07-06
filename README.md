@@ -126,7 +126,7 @@ PyEW has various classes that have various degrees of abstractions. For example:
   * The gsof2Ring module is a modified version of UNAVCOS python script to read gsof and insert them into an EW Ring.
   * The Ring2Mongo module will take wave information and store it in a mongo database (ew-waves). By default it creates a capped collection of 10 Mb for every station regardless of channel. Unless the (time) version is used it will store 3 minutes of data.
   * The Mongo2Ring module adds listeners in order to better transmit data from a MongoDB to another from a central database. It requires the latest MongoDB and PyMongo, due to the use of watch pointers.
-  * Finally the Ring2Plot is a time limitied Ring2Mongo with a meteor nodejs application (ewrttv) that can be used to plot and display data to a browser (3 components, 1 station). A live version of this can be found here: [ewrttv.fran89.com](). Additionally a single component version is availible in a different branch (singleplot).
+  * Finally the Ring2Plot is a time limitied Ring2Mongo with a meteor nodejs application (ewrttv) that can be used to plot and display data to a browser (3 components, 1 station). A live version of this can be found [HERE](http://ewrttv.fran89.com). Additionally a single component version is availible in a different branch (singleplot).
   
 ### Acknowledgments
 -------------------

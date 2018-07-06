@@ -80,14 +80,14 @@ PyEW has various classes that have various degrees of abstractions. For example:
   
   * **PyEW.EWModule().get_bytes(buf_ring, msg_type)  
   PyEW.EWModule().get_msg(buf_ring, msg_type):**  
-  These two methods will get either a bytestring (which you would have to decode) or a text string (which has been decoded for you) from the message type: msg_type. Be warned get_msg will expect a null terminated string. If nothing is found it will return an empty string, otherwise it will return a python string or python bytestring.
+  These two methods will get either a bytestring (which you would have to decode) or a text string (which has been decoded for you) from the memory buffer at location: buf_ring __(ring must have been added from the add_ring() method in order for this to work)__ and from the message type: msg_type. Be warned get_msg will expect a null terminated string. If nothing is found it will return an empty string, otherwise it will return a python string or python bytestring.
   
   * **PyEW.EWModule().put_bytes(buf_ring, msg_type, msg)  
   PyEW.EWModule().put_msg(buf_ring, msg_type, msg):**  
-  Likewise these two methods will put either a bytestring or a text string into the EW ring with message type: msg_type. The lenght of the string is determined by the len() method.
+  Likewise these two methods will put either a bytestring or a text string into the memory buffer at location: buf_ring __(ring must have been added from the add_ring() method in order for this to work)__ with message type: msg_type. The lenght of the string is determined by the len() method.
   
   * **PyEW.EWModule().get_wave(buf_ring):**
-  This method will attempt to retrive a wave message from the ring. If it's successfull it will return a python dictionary with the following:  
+  This method will attempt to retrive a wave message from the memory buffer at location: buf_ring __(ring must have been added from the add_ring() method in order for this to work)__. If it's successfull it will return a python dictionary with the following wave packet information:  
   
         {
           'station': python.string,
@@ -101,6 +101,20 @@ PyEW has various classes that have various degrees of abstractions. For example:
           'datatype': python.string,
           'data': numpy.array
         }
-  
+        
   * **PyEW.EWModule().put_wave(buf_ring, msg):**
+  This method will attempt to insert a wave message into the memory buffer at location: buf_ring __(ring must have been added from the add_ring() method in order for this to work)__. The message will be a python dictionary of the following information:  
+  
+        {
+          'station': python.string,
+          'network': python.string,
+          'channel': python.string,
+          'location': python.string,
+          'nsamp': python.int,
+          'samprate': python.int,
+          'startt': python.int,
+          'endt': python.int, # This one may be ommited and calculated on the fly.
+          'datatype': python.string,
+          'data': numpy.array
+        }
 

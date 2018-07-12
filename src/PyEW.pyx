@@ -223,7 +223,7 @@ cdef class EWModule:
     self.OK = True
     
   def send_hb(self):
-    msg = str(round(time.time())) + ' ' + str(os.getpid())
+    msg = str(int(round(time.time()))) + ' ' + str(os.getpid())
     mymsg = msg.encode('UTF-8')
     cdef char* message = mymsg
     if self.OK:

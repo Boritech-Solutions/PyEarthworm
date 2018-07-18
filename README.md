@@ -89,7 +89,7 @@ The main class for communication with earthworm is PyEW.EWModule. It is a class 
         }
   It must be stressed that the maximum amount of bytes cannot be more than the one specified in the EW Specification (4096). Additionally, Earthworm does not work well (if at all?) with double precision and extra care must be made when inserting data into EW.
   
- However PyEW has various classes that have various degrees of abstractions, these are more low level and should not be used unless absolutely needed. For example:
+ However PyEarthWorm has various classes that have various degrees of abstractions, these are more low level and should not be used unless absolutely needed. For example:
 
 #### PyEW.ring:
   * **PyEW.ring(ring_id):**  
@@ -125,7 +125,7 @@ The main class for communication with earthworm is PyEW.EWModule. It is a class 
   
   
 ## Examples:
-  Included with PyEW is a series of examples that may help you in figuring out how this works:
+  Included with PyEarthWorm is a series of examples that may help you in figuring out how this works:
   * The Ring2Ring module is a reimagined in python Ring2Ring module. It has no way to filter, however it can be added to suit your needs. It may have multiple input and output rings and can be used to collapse multiple ring2ring instances.
   * The BNC2Ring module is essentially a NMEAString2EW module that will take input from BNC PPP and place it in a EW Ring.
   * The gsof2Ring module is a modified version of UNAVCO's python script to read gsof and insert them into an EW Ring.
@@ -159,7 +159,7 @@ I hope that you can use these examples to build your own modules that are shared
   * The python and cython community.
   
 #### AD:
-Boritech Solutions is a consulting firm that can help you set up and create modules with PyEW. Contact Us today!
+Boritech Solutions is a consulting firm that can help you set up and create modules with PyEarthWorm. Contact Us today!
 www.BoritechSolutions.com
 
 ~Francisco.

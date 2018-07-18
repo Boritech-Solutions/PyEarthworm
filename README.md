@@ -17,7 +17,7 @@ We suggest the usage of Anaconda for deployment:
 
 ### Procedure
 
-These commands take place in the PyEW directory (and having sourced the EW enviorment!):
+These commands take place in the PyEarthWorm directory (and having sourced the EW enviorment!):
 
     $ cd src/
     $ python setup.py build_ext -i

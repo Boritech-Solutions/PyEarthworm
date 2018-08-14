@@ -47,8 +47,12 @@ class Ring2Mongo():
     if wave == {}: 
       return
       
-    # Generate the time array 
-    time_array = np.array(np.arange(wave['startt'],wave['endt']+1/wave['samprate'],1/wave['samprate'])*1000, dtype='datetime64[ms]')
+    # Generate the time array
+    time_array = np.zeros(wave['data'].size)
+    time_skip = 1/wave['samprate']
+    for i in range(0, wave['data'].size):
+        time_array[i] = (wave['startt'] + (time_skip*i)) * 1000
+    time_array = np.array(time_array, dtype='datetime64[ms]')
     
     # Change the time array from numpy to string, data from numpy to string
     # Could use: time_array.tolist() but nodejs is botching the ISOString input

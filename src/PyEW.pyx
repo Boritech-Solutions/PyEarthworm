@@ -399,38 +399,6 @@ cdef class EWModule:
         print "Location not in trace"
       return
     
-    # Set # of samps
-    if 'nsamp' in msg:
-      mypkt.trh2.nsamp = msg['nsamp']
-    else:
-      if self.debug:
-        print "Number of samples not in trace"
-      return
-      
-    # Set samp rate
-    if 'samprate' in msg:
-      mypkt.trh2.samprate = msg['samprate']
-    else:
-      if self.debug:
-        print "Sample rate not in trace"
-      return
-    
-    # Set start time
-    if 'startt' in msg:
-      mypkt.trh2.starttime = msg['startt']
-    else:
-      if self.debug:
-        print "Start time not in trace"
-      return
-    
-    # Set end time
-    if 'endt' in msg:
-      mypkt.trh2.endtime = msg['endt']
-    else:
-      mypkt.trh2.endtime = msg['startt'] + ((msg['nsamp'] - 1)/msg['samprate'])
-      if self.debug:
-        print "End time not in trace, but continuing"
-    
     # Set datatype
     if 'datatype' in msg:
       strncpy(mypkt.trh2.datatype,msg['datatype'].encode('UTF-8'), 2)
@@ -439,6 +407,49 @@ cdef class EWModule:
       if self.debug:
         print "Data type not in trace"
       return
+    
+    # Set # of samps
+    if 'nsamp' in msg:
+      mypkt.trh2.nsamp = msg['nsamp']
+      if msg['datatype'] == 's4':
+        mypkt.trh2.nsamp = struct.unpack(">i", struct.pack("<i", msg['nsamp']))[0]
+    else:
+      if self.debug:
+        print "Number of samples not in trace"
+      return
+    
+    # Set samp rate
+    if 'samprate' in msg:
+      mypkt.trh2.samprate = msg['samprate']
+      if msg['datatype'] == 's4':
+        mypkt.trh2.samprate = struct.unpack(">d", struct.pack("<d", msg['samprate']))[0]
+    else:
+      if self.debug:
+        print "Sample rate not in trace"
+      return
+    
+    # Set start time
+    if 'startt' in msg:
+      mypkt.trh2.starttime = msg['startt']
+      if msg['datatype'] == 's4':
+        mypkt.trh2.starttime = struct.unpack(">d", struct.pack("<d", msg['startt']))[0]
+    else:
+      if self.debug:
+        print "Start time not in trace"
+      return
+    
+    # Set end time
+    if 'endt' in msg:
+      mypkt.trh2.endtime = msg['endt']
+      if msg['datatype'] == 's4':
+        mypkt.trh2.endtime = struct.unpack(">d", struct.pack("<d", msg['endt']))[0]
+    else:
+      endtime = msg['startt'] + (( msg['nsamp'] - 1 ) *( 1/msg['samprate'] ))
+      mypkt.trh2.endtime = msg['startt'] + ((msg['nsamp'] - 1)/msg['samprate'])
+      if msg['datatype'] == 's4':
+        mypkt.trh2.endtime = struct.unpack(">d", struct.pack("<d", endtime))[0]
+      if self.debug:
+        print "End time not in trace, but continuing"
     
     # Set payload
     if 'data' in msg:
@@ -449,7 +460,7 @@ cdef class EWModule:
       if self.debug:
         print "No data in trace"
       return
-      
+    
     if msg['datatype'] == 'i2':
       length = sizeof(ctracebuf.TRACE2_HEADER)+ (mypkt.trh2.nsamp * 2)
     if msg['datatype'] == 'i4':
@@ -458,7 +469,9 @@ cdef class EWModule:
       length = sizeof(ctracebuf.TRACE2_HEADER)+ (mypkt.trh2.nsamp * 4)
     if msg['datatype'] == 'f8':
       length = sizeof(ctracebuf.TRACE2_HEADER)+ (mypkt.trh2.nsamp * 8)
-      
+    if msg['datatype'] == 's4':
+      length = sizeof(ctracebuf.TRACE2_HEADER)+ (msg['nsamp'] * 4)
+    
     pkt = <char*> &mypkt
     
     if self.OK:

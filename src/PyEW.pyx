@@ -21,6 +21,7 @@
 import os, time, threading
 from libc.string cimport memcpy, memset, strncpy
 import numpy as np
+import struct
 
 cimport ctransport
 cimport ctracebuf
@@ -308,6 +309,8 @@ cdef class EWModule:
         mymsg = msg[2]
         memcpy(&mypkt, mymsg, msg[1])
         
+        # myarr = np.array([]) JIC
+        
         datatype = mypkt.trh2.datatype.decode('UTF-8')
         if datatype == 'i2':
           mydata = msg[2][sizeof(ctracebuf.TRACE2_HEADER):(sizeof(ctracebuf.TRACE2_HEADER)+mypkt.trh2.nsamp*2)]
@@ -318,6 +321,9 @@ cdef class EWModule:
         if datatype == 'i8':
           mydata = msg[2][sizeof(ctracebuf.TRACE2_HEADER):(sizeof(ctracebuf.TRACE2_HEADER)+mypkt.trh2.nsamp*8)]
           myarr = np.frombuffer(mydata, dtype=np.dtype(mypkt.trh2.datatype.decode('UTF-8')))
+        if datatype == 's4':
+          mydata = msg[2][sizeof(ctracebuf.TRACE2_HEADER):(sizeof(ctracebuf.TRACE2_HEADER)+(int(struct.unpack("<i", struct.pack(">i", mypkt.trh2.nsamp))[0])*4))]
+          myarr = np.frombuffer(mydata, dtype=np.dtype('i4'))
           
         data = {
         'station': mypkt.trh2.sta.decode('UTF-8'),
@@ -330,6 +336,19 @@ cdef class EWModule:
         'endt': mypkt.trh2.endtime,
         'datatype': mypkt.trh2.datatype.decode('UTF-8'),
         'data': myarr}
+        
+        if datatype == 's4':
+          data = {
+          'station': mypkt.trh2.sta.decode('UTF-8'),
+          'network': mypkt.trh2.net.decode('UTF-8'),
+          'channel': mypkt.trh2.chan.decode('UTF-8'),
+          'location': mypkt.trh2.loc.decode('UTF-8'),
+          'nsamp': int(struct.unpack("<i", struct.pack(">i", mypkt.trh2.nsamp))[0]),
+          'samprate': struct.unpack("<d", struct.pack(">d", mypkt.trh2.samprate))[0],
+          'startt': struct.unpack("<d", struct.pack(">d", mypkt.trh2.starttime))[0],
+          'endt': struct.unpack("<d", struct.pack(">d", mypkt.trh2.endtime))[0],
+          'datatype': 'i4',
+          'data': myarr}
         
         return data
       else:

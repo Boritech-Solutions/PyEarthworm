@@ -323,7 +323,7 @@ cdef class EWModule:
           myarr = np.frombuffer(mydata, dtype=np.dtype(mypkt.trh2.datatype.decode('UTF-8')))
         if datatype == 's4':
           mydata = msg[2][sizeof(ctracebuf.TRACE2_HEADER):(sizeof(ctracebuf.TRACE2_HEADER)+(int(struct.unpack("<i", struct.pack(">i", mypkt.trh2.nsamp))[0])*4))]
-          myarr = np.frombuffer(mydata, dtype=np.dtype('i4'))
+          myarr = np.frombuffer(mydata, dtype=np.dtype('>i4'))
           
         data = {
         'station': mypkt.trh2.sta.decode('UTF-8'),
@@ -347,7 +347,7 @@ cdef class EWModule:
           'samprate': struct.unpack("<d", struct.pack(">d", mypkt.trh2.samprate))[0],
           'startt': struct.unpack("<d", struct.pack(">d", mypkt.trh2.starttime))[0],
           'endt': struct.unpack("<d", struct.pack(">d", mypkt.trh2.endtime))[0],
-          'datatype': 'i4',
+          'datatype': mypkt.trh2.datatype.decode('UTF-8'),
           'data': myarr}
         
         return data

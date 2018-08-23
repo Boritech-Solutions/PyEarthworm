@@ -121,15 +121,16 @@ class ring2plot2():
                      'time' : self.time_buffer[name].astype('uint64').tolist()
                    }
         if name in self.db.collection_names():
-            self.db[name].update_one({ '_id': self.chan_idents[name]}, {'$set': grphdata}, upsert=False)
             self.chan_idents[name] = self.db[name].find_one().get('_id')
+            self.db[name].update_one({ '_id': self.chan_idents[name]}, {'$set': grphdata}, upsert=False)
+        
         else:
             self.chan_idents[name] = self.db[name].insert_one(grphdata).inserted_id
         
         # Debug data
         if self.debug:
             print("First instance of station/channel:")
-            print(name)
+            print(name)4991673538
             print("MongoID")
             print(self.chan_idents[name])
             print("Size:")

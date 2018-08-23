@@ -40,6 +40,7 @@ class ring2plot2():
     self.minutes = minutes
     self.wave_buffer = {}
     self.time_buffer = {}
+    self.chan_idents = {}
     
     # Allow it to run
     self.runs = True
@@ -55,7 +56,7 @@ class ring2plot2():
       return
     
     # Lets try to buffer with python dictionaries
-    name = wave["station"] +'.' + wave["channel"]
+    name = wave["station"] + '.' + wave["channel"] + '.' + wave["network"] +'.' + wave["location"]
     
     if name in self.wave_buffer :
     
@@ -92,6 +93,12 @@ class ring2plot2():
             self.wave_buffer[name] = self.wave_buffer[name][[np.s_[samp::]]]
             self.time_buffer[name] = self.time_buffer[name][[np.s_[samp::]]]
             
+            grphdata = { 'wave' : self.wave_buffer[name].tolist(),
+                         'time' : self.time_buffer[name].astype('uint64').tolist()
+                       }
+            
+            self.db[name].update_one({ '_id': self.chan_idents[name]}, {'$set': grphdata}, upsert=False)
+            
             # Debug data
             if self.debug:
                 print("Data was sliced at sample:")
@@ -110,12 +117,21 @@ class ring2plot2():
         # First instance of data in buffer, create buffer:
         self.wave_buffer[name] = wave["data"]
         self.time_buffer[name] = np.array(time_array, dtype='datetime64[ms]')
-        self.time_buffer[name] = self.time_buffer[name][0:self.wave_buffer[name].size]
+        grphdata = { 'wave' : self.wave_buffer[name].tolist(),
+                     'time' : self.time_buffer[name].astype('uint64').tolist()
+                   }
+        if name in self.db.collection_names():
+            self.db[name].update_one({ '_id': self.chan_idents[name]}, {'$set': grphdata}, upsert=False)
+            self.chan_idents[name] = self.db[name].find_one().get('_id')
+        else:
+            self.chan_idents[name] = self.db[name].insert_one(grphdata).inserted_id
         
         # Debug data
         if self.debug:
             print("First instance of station/channel:")
             print(name)
+            print("MongoID")
+            print(self.chan_idents[name])
             print("Size:")
             print(self.wave_buffer[name].size)
             print(self.time_buffer[name].size)

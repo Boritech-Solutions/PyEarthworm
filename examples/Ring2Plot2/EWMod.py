@@ -57,6 +57,7 @@ class ring2plot2():
     
     # Lets try to buffer with python dictionaries
     name = wave["station"] + '.' + wave["channel"] + '.' + wave["network"] +'.' + wave["location"]
+    stat = wave["station"]
     
     if name in self.wave_buffer :
     
@@ -79,6 +80,8 @@ class ring2plot2():
         if self.debug:
             print("Station Channel combo is in buffer:")
             print(name)
+            print("MongoID")
+            print(self.chan_idents[name])
             print("Max:")
             print(max_samp)
             print("Size:")
@@ -93,11 +96,12 @@ class ring2plot2():
             self.wave_buffer[name] = self.wave_buffer[name][[np.s_[samp::]]]
             self.time_buffer[name] = self.time_buffer[name][[np.s_[samp::]]]
             
-            grphdata = { 'wave' : self.wave_buffer[name].tolist(),
+            grphdata = { 'scnl' : name,
+                         'wave' : self.wave_buffer[name].tolist(),
                          'time' : self.time_buffer[name].astype('uint64').tolist()
                        }
             
-            self.db[name].update_one({ '_id': self.chan_idents[name]}, {'$set': grphdata}, upsert=False)
+            self.db[stat].update_one({ '_id': self.chan_idents[name]}, {'$set': grphdata}, upsert=False)
             
             # Debug data
             if self.debug:
@@ -117,20 +121,24 @@ class ring2plot2():
         # First instance of data in buffer, create buffer:
         self.wave_buffer[name] = wave["data"]
         self.time_buffer[name] = np.array(time_array, dtype='datetime64[ms]')
-        grphdata = { 'wave' : self.wave_buffer[name].tolist(),
+        grphdata = { 'scnl' : name,
+                     'wave' : self.wave_buffer[name].tolist(),
                      'time' : self.time_buffer[name].astype('uint64').tolist()
                    }
-        if name in self.db.collection_names():
-            self.chan_idents[name] = self.db[name].find_one().get('_id')
-            self.db[name].update_one({ '_id': self.chan_idents[name]}, {'$set': grphdata}, upsert=False)
-        
+        if stat in self.db.collection_names():
+            staCheck = self.db[stat].find_one({'scnl' : name })
+            if staCheck is None:
+                self.chan_idents[name] = self.db[stat].insert_one(grphdata).inserted_id
+            else:
+                self.chan_idents[name] = staCheck.get('_id')
+                self.db[stat].update_one({ '_id': self.chan_idents[name]}, {'$set': grphdata}, upsert=False)  
         else:
-            self.chan_idents[name] = self.db[name].insert_one(grphdata).inserted_id
+            self.chan_idents[name] = self.db[stat].insert_one(grphdata).inserted_id
         
         # Debug data
         if self.debug:
             print("First instance of station/channel:")
-            print(name)4991673538
+            print(name)
             print("MongoID")
             print(self.chan_idents[name])
             print("Size:")

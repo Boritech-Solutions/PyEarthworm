@@ -1,13 +1,29 @@
 import './graph.html';
+import { FlowRouter } from 'meteor/kadira:flow-router';
+import { get_collection } from '/imports/startup/both/collections_manager.js';
 
 Template.graph.onCreated(function graphOnCreated() {
-  // counter starts at 0
-  this.counter = new ReactiveVar(0);
+  staname = FlowRouter.getParam('_id');
+  Meteor.call('checkcol', {
+    sta: staname }, 
+    (err, res) => {
+      if (err){
+        alert(err);
+        FlowRouter.go('App.home',{});
+      } 
+    }
+  );
+  console.log(staname);
+  mystation = get_collection(staname);
 });
 
 Template.graph.helpers({
   counter() {
-    return Template.instance().counter.get();
+    console.log(mystation);
+    return mystation.find().count();
+  },
+  station() {
+    return staname;
   },
 });
 

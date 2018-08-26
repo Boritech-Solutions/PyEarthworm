@@ -8,7 +8,8 @@
   "dependencies": {
     "@babel/runtime": "^7.0.0-beta.55",
     "babel": "^6.23.0",
-    "meteor-node-stubs": "^0.4.1"
+    "meteor-node-stubs": "^0.4.1",
+    "plotly": "^1.0.6"
   },
   "devDependencies": {
     "chai": "^4.1.2"

@@ -17,7 +17,7 @@ Template.hello.events({
   'submit .main-page-form-station' (event, instance) {
     event.preventDefault();
     var getStation = event.target.station.value;
-    console.log(getStation);
+    //console.log(getStation);
 
     Meteor.call('checkcol', { 
       sta: getStation

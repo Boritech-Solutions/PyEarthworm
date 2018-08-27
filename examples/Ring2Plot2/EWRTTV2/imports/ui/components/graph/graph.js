@@ -1,6 +1,7 @@
 import './graph.html';
 import { FlowRouter } from 'meteor/kadira:flow-router';
-import { get_collection } from '/imports/startup/both/collections_manager.js';
+import { getCollection } from '/imports/api/collections_manager/collections_manager.js';
+import { Meteor } from 'meteor/meteor';
 
 Template.graph.onCreated(function graphOnCreated() {
   staname = FlowRouter.getParam('_id');
@@ -14,17 +15,26 @@ Template.graph.onCreated(function graphOnCreated() {
     }
   );
   console.log(staname);
-  mystation = get_collection(staname);
+  Meteor.subscribe(staname);
+  mystation = getCollection(staname);
+
+  for(var i = 0; i < mystation.find({}).count(); i++){
+
+  }
+
 });
 
 Template.graph.helpers({
   counter() {
-    console.log(mystation);
-    return mystation.find().count();
+    return mystation.find({}).count();
   },
   station() {
     return staname;
   },
+  channels (){
+    console.log ('test');
+    return mystation.find({});
+  }
 });
 
 Template.graph.events({

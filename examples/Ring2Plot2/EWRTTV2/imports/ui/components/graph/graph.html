@@ -1,3 +1,6 @@
 <template name="graph">
   <p>The station {{station}} contains  {{counter}} channels.</p>
+  {{#each channels}}
+      <p>{{name}}</p>
+  {{/each}}
 </template>

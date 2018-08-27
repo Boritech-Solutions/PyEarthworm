@@ -1,13 +1,13 @@
 // Server entry point, imports all server code
 import '/imports/startup/server';
 import '/imports/startup/both';
-import { get_collection } from '/imports/startup/both/collections_manager.js';
+import { getCollection } from '/imports/api/collections_manager/collections_manager.js' ;
 
 Meteor.methods({
   'checkcol'({sta}){
     //console.log(sta);
-    //console.log(get_collection(sta).find().count());
-    if( get_collection(sta).find().count() !== 0 ) {
+    //console.log(getCollection(sta).find().count());
+    if( getCollection(sta).find().count() !== 0 ) {
       console.log("Collection not empty");
       return;
     }

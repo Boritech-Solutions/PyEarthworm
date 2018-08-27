@@ -1,6 +1,8 @@
 <template name="graph">
   <p>The station {{station}} contains  {{counter}} channels.</p>
   {{#each channels}}
-      <p>{{name}}</p>
+      <p>{{scnl}}</p>
+      <div id={{scnl}}></div>
   {{/each}}
+  <button> Test button </button>
 </template>

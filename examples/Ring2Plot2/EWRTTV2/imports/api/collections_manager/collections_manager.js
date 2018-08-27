@@ -7,7 +7,7 @@ export const getCollection = name => {
     if (!collections[name]) {
       collections[name] = new Mongo.Collection(name);
       if (Meteor.isServer) {
-        Meteor.publish(name, function tasksPublication() {
+        Meteor.publish(name, function () {
           return collections[name].find();
         });
       }

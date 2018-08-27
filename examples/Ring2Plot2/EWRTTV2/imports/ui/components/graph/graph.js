@@ -3,6 +3,9 @@ import { FlowRouter } from 'meteor/kadira:flow-router';
 import { getCollection } from '/imports/api/collections_manager/collections_manager.js';
 import { Meteor } from 'meteor/meteor';
 
+//var d3 = require("d3");
+var c3 = require("c3");
+
 Template.graph.onCreated(function graphOnCreated() {
   staname = FlowRouter.getParam('_id');
   Meteor.call('checkcol', {
@@ -17,11 +20,7 @@ Template.graph.onCreated(function graphOnCreated() {
   console.log(staname);
   Meteor.subscribe(staname);
   mystation = getCollection(staname);
-
-  for(var i = 0; i < mystation.find({}).count(); i++){
-
-  }
-
+  mychans = mystation.find({});
 });
 
 Template.graph.helpers({
@@ -32,14 +31,61 @@ Template.graph.helpers({
     return staname;
   },
   channels (){
-    console.log ('test');
     return mystation.find({});
   }
 });
 
 Template.graph.events({
   'click button'(event, instance) {
-    // increment the counter when button is clicked
-    instance.counter.set(instance.counter.get() + 1);
+
+    console.log(mychans.count());
+
+    mychans.forEach( (element) => {
+      //console.log(element['scnl']);
+
+      // Get element
+      var gelement = document.getElementById(element['scnl']);
+      
+      // Convert time from ms to ISO STRING
+      element['time'] = element['time'].map( function(element) {
+        var temp = new Date(parseInt(element)).toISOString();
+        return temp;
+      });
+
+      // Prepare the data array
+      var time = element['time'].slice();
+      var data = element['wave'].slice();
+      time.unshift('time');
+      data.unshift(element['scnl']);
+
+      // Generate chart
+      var chart = c3.generate({
+        bindto: gelement,
+        data: {
+          x: 'time',
+          xFormat: '%Y-%m-%dT%H:%M:%S.%LZ',
+          columns: [
+            time,
+            data
+          ]
+        },
+        point: {
+          show: false
+        },
+        axis: {
+          x: {
+            type: 'timeseries',
+            tick: {
+              format: '%H:%M:%S.%L'
+            }
+          }
+        }
+      });
+      //console.log(gelement);
+    });
   },
+});
+
+Template.graph.onRendered(function () {
+
 });

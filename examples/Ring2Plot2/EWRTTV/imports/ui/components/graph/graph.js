@@ -80,7 +80,7 @@ Template.graph.events({
             tick: {
               count: 60,
               fit: true,
-              format: '%H:%M:%S:%L'
+              format: '%H:%M:%S'
             }
           }
         }

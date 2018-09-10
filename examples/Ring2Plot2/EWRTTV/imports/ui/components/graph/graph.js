@@ -40,6 +40,8 @@ Template.graph.events({
 
     console.log(mychans.count());
 
+    var charts = {};
+
     mychans.forEach( (element) => {
       //console.log(element['scnl']);
 
@@ -76,12 +78,55 @@ Template.graph.events({
           x: {
             type: 'timeseries',
             tick: {
-              format: '%H:%M:%S.%L'
+              count: 60,
+              fit: true,
+              format: '%H:%M:%S:%L'
             }
           }
         }
       });
+      charts[element['scnl']] = chart;
+
       //console.log(gelement);
+    });
+
+    const handlechange = mychans.observeChanges ({
+      changed(mid, wave) {
+        var doc = mystation.findOne({_id: mid});
+        //console.log(doc);
+
+        // Get element
+        //var gelement = document.getElementById(doc['scnl']);
+        //console.log (gelement);
+
+        // Convert time from ms to ISO STRING
+        wave['time'] = wave['time'].map( function(element) {
+          var temp = new Date(parseInt(element)).toISOString();
+          return temp;
+        });
+
+        // Prepare the data array
+        var time = wave['time'].slice();
+        var data = wave['wave'].slice();
+        time.unshift('time');
+        data.unshift(doc['scnl']);
+
+        chart = charts[doc['scnl']];
+        //console.log(chart);
+
+        /* chart.unload({
+          ids: ['time', doc['scnl']]
+        }); */
+
+        chart.load({
+          columns: [
+            time,
+            data
+          ]
+        });
+
+      //console.log(gelement);
+      }
     });
   },
 });

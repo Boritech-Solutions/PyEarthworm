@@ -1,34 +1,3 @@
-
-/*
- *   THIS FILE IS UNDER RCS - DO NOT MODIFY UNLESS YOU HAVE
- *   CHECKED IT OUT USING THE COMMAND CHECKOUT.
- *
- *    $Id: kom.c 6381 2015-06-13 14:11:41Z paulf $
- *
- *    Revision history:
- *     $Log$
- *     Revision 1.6  2008/03/05 13:02:23  quintiliani
- *     Minor change: substituted comment // to /star star/
- *
- *     Revision 1.5  2008/03/05 08:20:52  quintiliani
- *     Minor change: substituted comment // to /star star/
- *
- *     Revision 1.4  2007/07/25 23:58:08  hal
- *     * config reading (from files and strings) is now line-termination-agnostic
- *     * k_rd() and k_put() have been merged, as most of their code was identical
- *
- *     Revision 1.3  2004/03/22 21:20:36  kohler
- *     Changed "static struct K_buf" to "struct k_buf"
- *
- *     Revision 1.2  2001/10/05 20:42:15  dietz
- *     Increased MAXCRD to 1024 (was 512)
- *
- *     Revision 1.1  2000/02/14 18:51:48  lucky
- *     Initial revision
- *
- *
- */
-
 /*
  * kom.c : Simple positional command parser.
  *
@@ -45,11 +14,12 @@
 /* notice is included in each resulting source module.                      */
 /****************************************************************************/
 
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdarg.h>
-#include <kom.h>
+
+#include "kom.h"
 
 #define BOOL_EXPANSION_FROM_ENV(x)  ( (x==KOM_EXPANSION_FROM_ENV)? 1 : 0 )
 #define BOOL_EXPANSION_FROM_FILE(x) ( (x==KOM_EXPANSION_FROM_FILE)? 1 : 0 )
@@ -79,12 +49,11 @@ void set_kom_log(void (*par_kom_log_func)(char *) )
 void kom_log(char *format, ... )
 {
     va_list listptr;
-    int retvalue = 0;
     char message[KOM_MAX_LOG_MESSAGE_LENGTH];
 
     if(kom_log_func != NULL) {
       va_start(listptr, format);
-      retvalue = vsnprintf(message, (size_t) KOM_MAX_LOG_MESSAGE_LENGTH, format, listptr);
+      vsnprintf(message, (size_t) KOM_MAX_LOG_MESSAGE_LENGTH, format, listptr);
       kom_log_func(message);
       va_end(listptr);
     }
@@ -110,7 +79,7 @@ char iniFormat = 0;
 /*
  **** k_open_base : common code for k_open & k_open_format
  */
-static int k_open_base( char *name )
+static int k_open_base( const char *name )
 {
         if(Nbuf < MAXBUF && com.fid) {
                 Kbuf[Nbuf++] = com;
@@ -133,7 +102,7 @@ static int k_open_base( char *name )
  *              can be open at a time, but it should be straight foward to add
  *              recursion capabitity using a stack in the com area.
  */
-int k_open( char *name )
+int k_open( const char *name )
 {
 	iniFormat = 0;
 	return k_open_base( name );
@@ -144,7 +113,7 @@ int k_open( char *name )
  *                    ewFormat=0 means file is in .ini format
  *                               o/w use normal EW format
  */
-int k_open_format( char *name, char ewFormat )
+int k_open_format( const char *name, char ewFormat )
 {
 	iniFormat = ewFormat ? 0 : '=';
 	return k_open_base( name );
@@ -767,7 +736,7 @@ char *GetEnvVarValueFromFile( const char *envvar_name ) {
 char *k_getenv(const char *envvar_name, int flag_expand_from_file) {
     char *ret;
     /* 0 environment getenv(), 1 earthworm file GetEnvVarValueFromFile() */
-    int source = 0;
+/*  int source = 0; */
     char *value_from_file = NULL;
     char *value_from_environment = NULL;
 
@@ -776,7 +745,7 @@ char *k_getenv(const char *envvar_name, int flag_expand_from_file) {
     if(flag_expand_from_file) {
 	value_from_file = GetEnvVarValueFromFile( envvar_name );
 	if(value_from_file) {
-	    source = 1;
+/*	    source = 1; */
 	    ret = value_from_file;
 	} else {
 	    ret = value_from_environment;
@@ -816,14 +785,15 @@ int k_envvar_expansion(char *dst, const char *src, size_t max_dst, int flag_expa
     int flag_copy = 0;
     char envvar_name[MAXCRD];
     char envvar_value[MAXCRD];
-    int j, k;
     char *temp_variable_value;
-    int i_src = 0;
-    int i_dst = 0;
-    int l_src = strlen(src);
     int count_global_var   = 0;
     int count_expanded_var = 0;
     int comment_started = 0;
+    /* (unsigned) size_t variables for string indexing to match size_t max_dat */
+    size_t j, k;
+    size_t i_src = 0;
+    size_t i_dst = 0;
+    size_t l_src = strlen(src);
 
     while(i_src < l_src  &&  ret == 0) {
 	flag_copy = 1;
@@ -919,4 +889,3 @@ int k_envvar_expansion(char *dst, const char *src, size_t max_dst, int flag_expa
 
     return ret;
 }
-

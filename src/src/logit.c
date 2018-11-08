@@ -1,9 +1,8 @@
-
 /*
  *   THIS FILE IS UNDER RCS - DO NOT MODIFY UNLESS YOU HAVE
  *   CHECKED IT OUT USING THE COMMAND CHECKOUT.
  *
- *    $Id: logit.c 5973 2013-09-24 16:32:35Z paulf $
+ *    $Id: logit.c 7119 2018-02-14 23:05:31Z baker $
  *
  *    Revision history:
  *     $Log$
@@ -193,11 +192,11 @@ static int    bErrorIssuedToStderr=0;
 static mutex_t mutsem;
 #endif
 
-int logit_core( char *flag, char *format, va_list ap)
+int logit_core( const char *flag, const char *format, va_list ap )
 {
    time_t now;
    struct tm res;
-   static char   *fl;
+   static const char *fl;
    int    stout      = 0;      /* 1 if output is also to stdout   */
    int    sterr      = 0;      /* 1 if output is also to stderr   */
    int    time_stamp = 0;      /* 1 if output is time-stamped     */
@@ -443,7 +442,7 @@ int logit_core( char *flag, char *format, va_list ap)
     *                                                               *
     *****************************************************************/
 
-void ew_addslash (char *s) {
+void ew_addslash( char *s ) {
 	if ((s[0] != '\0') && (s[strlen(s)-1] != DIR_SLASH))
 		sprintf(s, "%s%c", s, DIR_SLASH);
 }
@@ -497,7 +496,7 @@ int is_logit_initialized() {
 	*   according to the new value in logflag.                              *
     *************************************************************************/
 
-void logit_init( char *prog, short mid, int bufSize, int logflag )
+void logit_init( const char *prog, short mid, int bufSize, int logflag )
 {
    time_t now;
    struct tm res;
@@ -706,12 +705,12 @@ void logit_init( char *prog, short mid, int bufSize, int logflag )
     *  The rest of calling sequence is identical to printf.         *
     *****************************************************************/
 
-void logit( char *flag, char *format, ... )
+void logit( const char *flag, const char *format, ... )
 {
    auto va_list ap;
 
    va_start( ap, format );
-	 logit_core(flag,format,ap);
+   logit_core(flag,format,ap);
    va_end( ap );
 }
 
@@ -731,9 +730,10 @@ void logit( char *flag, char *format, ... )
  *             calling this routine                                      *
  *                                                                       *
  *************************************************************************/
-int get_prog_name2(char *szFullName, char * szProgName, int iProgNameBufferLen)
+int get_prog_name2( const char *szFullName, char * szProgName, int iProgNameBufferLen )
 {
-	char	*str,*str1;
+	const char *str,*str1;
+	char *s;
 
 	if ((szFullName == NULL) || (szProgName == NULL))
 	{
@@ -745,26 +745,24 @@ int get_prog_name2(char *szFullName, char * szProgName, int iProgNameBufferLen)
 	   including "." in the program name
 	 *********************************/
   str1 = strrchr (szFullName, '/');
-  if(str1)
+  if (str1 != NULL)
     str1++;
   else
     str1 = szFullName;
 
   str = strrchr (str1, '\\');
-  if(str)
+  if (str != NULL)
     str++;  /* move past the '\' */
   else
     str = str1;
 
 	strncpy(szProgName, str, iProgNameBufferLen);
 
-	str = strchr (szProgName, '.');
-	if (str != NULL)
-		*str = '\0';
+	s = strchr (szProgName, '.');
+	if (s != NULL)
+		*s = '\0';
 
-  szProgName[iProgNameBufferLen-1] = 0x00;
-
-	return(EW_SUCCESS);
+	return EW_SUCCESS;
 
 }
 
@@ -782,10 +780,11 @@ int get_prog_name2(char *szFullName, char * szProgName, int iProgNameBufferLen)
  *             calling this routine                                      *
  *                                                                       *
  *************************************************************************/
-int get_prog_name (char *full_name, char *prog_name)
+int get_prog_name( const char *full_name, char *prog_name )
 {
 
-	char	*str;
+	const char *str;
+	char *s;
 
 	if ((full_name == NULL) || (prog_name == NULL))
 	{
@@ -801,9 +800,9 @@ int get_prog_name (char *full_name, char *prog_name)
 	else
 		strcpy (prog_name, full_name);
 
-	str = strchr (prog_name, '.');
-	if (str != NULL)
-		*str = '\0';
+	s = strchr (prog_name, '.');
+	if (s != NULL)
+		*s = '\0';
 
 	return EW_SUCCESS;
 
@@ -824,12 +823,12 @@ int get_prog_name (char *full_name, char *prog_name)
     *  The rest of calling sequence is identical to printf.         *
     *****************************************************************/
 
-void html_logit( char *flag, char *format, ... )
+void html_logit( const char *flag, const char *format, ... )
 {
    time_t now;
    struct tm res;
    auto va_list ap;
-   static char   *fl;
+   static const char *fl;
    int    time_stamp = 0;      /* 1 if output is time-stamped     */
    int    pid_stamp  = 0;      /* 1 if output is pid-stamped      */
    int    retcode;             /* DK 2000/06/02 used to check the
@@ -1070,5 +1069,3 @@ done:
    printf ("</CENTER><HR></PRE></STRONG>\n");
    return;
 } /* end html_logit */
-
-

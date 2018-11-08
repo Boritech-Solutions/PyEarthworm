@@ -1,5 +1,3 @@
-
-
   /********************************************************************
    *                                                       10/1998    *
    *                           transport.c                            *
@@ -11,17 +9,22 @@
    *                                                                  *
    ********************************************************************/
 
-#include <platform.h>
-#include <sys/types.h> 
+/* For semtimedop() in sys/sem.h */
+#ifndef _USE_POSIX_SHM
+# undef  _GNU_SOURCE
+# define _GNU_SOURCE 1
+#endif
+
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <errno.h>
-/* #include <stropts.h> */
 #include <string.h>
+#include <sys/types.h> 
 #include <time.h>
+
 #ifdef _USE_POSIX_SHM
-# include <sys/mman.h>
 # include <fcntl.h>
+# include <sys/mman.h>
 # include <sys/stat.h>
 # include <semaphore.h>
 #else
@@ -29,12 +32,15 @@
 # include <sys/shm.h>
 # include <sys/sem.h>
 #endif 
+
 #ifdef _USE_PTHREADS
 # include <pthread.h>
 #else
 # include <thread.h>
 #endif
-#include <transport.h>
+
+#include "platform.h"
+#include "transport.h"
 
 static short Put_Init=1;           /* initialization flag */
 static short Get_Init=1;           /* initialization flag */
@@ -419,8 +425,8 @@ int tport_putmsg( SHM_INFO *region,    /* info structure for memory region    */
 		  long      length,    /* size of incoming message            */
 		  char     *msg )      /* pointer to incoming message         */
 {
-   volatile static MSG_TRACK  trak[NTRACK_PUT];   /* sequence number keeper   */
-   volatile static int        nlogo;              /* # of logos seen so far   */
+   static volatile  MSG_TRACK  trak[NTRACK_PUT];   /* sequence number keeper   */
+   static volatile  int        nlogo;              /* # of logos seen so far   */
    int               	      it;                 /* index into trak          */
 #ifndef _USE_POSIX_SHM
    struct sembuf     sops;             /* semaphore operations; 

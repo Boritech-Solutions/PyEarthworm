@@ -1,4 +1,3 @@
-
      /********************************************************
       *              time_ew.c   UNIX version                *
       *                                                      *
@@ -8,14 +7,13 @@
       ********************************************************/
 
 #include "platform.h"
-#ifdef _UNIX
-#include <sys/time.h>
-#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include <time_ew.h>
+#include <sys/time.h>
+
+#include "time_ew.h"
 
 /********************************************************
  *  gmtime_ew() converts time in seconds since 1970 to  *
@@ -156,21 +154,17 @@ double hrtime_ew( double *tnow )
     if( clock_gettime( CLOCK_REALTIME, &t ) == 0 ) {
        *tnow = (double) t.tv_sec + (double)t.tv_nsec*0.000000001;
     }
-
     else {   
        *tnow = 0;
     }
 #else
-		struct timezone tz;
-	    struct timeval tv;
-		tz.tz_minuteswest=0;
-		tz.tz_dsttime=0;
-		gettimeofday(&tv, NULL);
-	   *tnow= tv.tv_sec+tv.tv_usec/1000000.;
+    struct timeval tv;
+
+    gettimeofday(&tv, NULL);
+    *tnow= tv.tv_sec+tv.tv_usec/1000000.;
 #endif
     return( *tnow );
 }
-
 
 /**********************************************************
  * Converts time (double, seconds since 1970:01:01) to    *
@@ -210,8 +204,6 @@ char *datestr23( double t, char *pbuf, int len )
  
    return( pbuf );
 }
-
-
 
 /**********************************************************
  * Converts time (double, seconds since 1970:01:01) to    *

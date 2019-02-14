@@ -192,6 +192,10 @@ class stopThread(threading.Thread):
           print "Not my pid"
     print("Stop thread successfully ended")
     
+  def stop(self):
+    print("Heartbeat shutdown requested")
+    self.runs = False
+    
 class restartThread(threading.Thread):
   """restartThread class"""
   def __init__(self):

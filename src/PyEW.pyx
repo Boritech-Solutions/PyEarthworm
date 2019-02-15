@@ -169,6 +169,7 @@ class heartbeatTimer(threading.Thread):
     
 class stopThread(threading.Thread):
   """stopThread class"""
+  
   def __init__(self):
     threading.Thread.__init__(self)
     
@@ -182,7 +183,6 @@ class stopThread(threading.Thread):
     while self.runs:
       time.sleep(0.1)
       inp = self.temp.getmsg_type(113)
-      
       if inp != (0,0):
         pid = inp[1][:inp[0]].decode('UTF-8')
         if pid == str(os.getpid()):
@@ -191,31 +191,6 @@ class stopThread(threading.Thread):
         else:
           print "Not my pid"
     print("Stop thread successfully ended")
-    
-class restartThread(threading.Thread):
-  """restartThread class"""
-  def __init__(self):
-    threading.Thread.__init__(self)
-    
-  def setup (self, ringid, modid, instid, mfunct):
-    self.temp = transport(ringid, modid, instid)
-    self.funct = mfunct
-    self.runs = True
-  
-  def run(self):
-    self.temp.flush()
-    while self.runs:
-      time.sleep(0.1)
-      inp = self.temp.getmsg_type(107)
-      
-      if inp != (0,0):
-        pid = inp[1][:inp[0]].decode('UTF-8')
-        if pid == str(os.getpid()):
-          self.temp.detach()
-          self.funct()
-        else:
-          print "Not my pid"
-    print("Restart thread successfully ended")
     
   def stop(self):
     print("Ring thread shutdown requested")
@@ -232,7 +207,6 @@ cdef class EWModule:
   cdef bint OK
   HBT = heartbeatTimer()
   RNG = stopThread()
-  RTH = restartThread()
   ringcom = []
   
   def __init__(self, def_ring, mod_id, inst_id, hb_time, db = False):
@@ -247,8 +221,6 @@ cdef class EWModule:
     self.HBT.start()
     self.RNG.setup(self.my_ring, self.my_modid, self.my_instid, self.goodbye)
     self.RNG.start()
-    self.RTH.setup(self.my_ring, self.my_modid, self.my_instid, self.goodbye)
-    self.RTH.start()
     self.OK = True
     
   def send_hb(self):
@@ -263,12 +235,11 @@ cdef class EWModule:
       self.OK = False
       self.HBT.stop()
       self.RNG.stop()
-      self.RTH.stop()
       self.default_ring.detach()
       for ring in self.ringcom:
         ring.detach()
-      print("Graceful Shutdown")
       time.sleep(self.hb)
+      print("Graceful Shutdown")
       quit()
   
   def mod_sta(self):

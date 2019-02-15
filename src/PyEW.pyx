@@ -161,7 +161,7 @@ class heartbeatTimer(threading.Thread):
     while self.runs:
       self.funct()
       time.sleep(self.time)
-    print("I'm out")
+    print("Heartbeat thread successfully ended")
     
   def stop(self):
     print("Heartbeat shutdown requested")
@@ -190,7 +190,7 @@ class stopThread(threading.Thread):
           self.funct()
         else:
           print "Not my pid"
-    print("I'm out")
+    print("Stop thread successfully ended")
     
   def stop(self):
     print("Heartbeat shutdown requested")

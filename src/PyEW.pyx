@@ -183,7 +183,6 @@ class stopThread(threading.Thread):
     while self.runs:
       time.sleep(0.1)
       inp = self.temp.getmsg_type(113)
-      
       if inp != (0,0):
         pid = inp[1][:inp[0]].decode('UTF-8')
         if str(os.getpid()) in str(pid):
@@ -212,7 +211,6 @@ class restartThread(threading.Thread):
     while self.runs:
       time.sleep(0.1)
       inp = self.temp.getmsg_type(107)
-      
       if inp != (0,0):
         pid = inp[1][:inp[0]].decode('UTF-8')
         if str(os.getpid()) in str(pid):

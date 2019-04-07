@@ -1,0 +1,5 @@
+cython
+flask
+configparser
+pillow
+pip install matplotlib --upgrade

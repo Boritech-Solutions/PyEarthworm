@@ -1,0 +1,17 @@
+<html>
+  <head>
+    <title>Graph Streaming Demonstration</title>
+  </head>
+  <body>
+    <h1>{{ value }}</h1>
+    {% if exist %}
+      {% for key in stations %}
+        <div style="margin-left: 10%">
+          <img src="{{ url_for('graph_feed', StaStr=key) }}">
+        </div>
+      {% endfor %} 
+    {% else %}    
+      <img src="tmp/Stop.png">
+    {% endif %}
+  </body>
+</html>

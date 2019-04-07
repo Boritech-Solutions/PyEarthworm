@@ -102,11 +102,37 @@ class EWPyPlotter():
             
             ## Generate image and keep it in a memory buffer
             ## We can edit the final figure here:
-            plt.figure()
+            gain = 4.6799235e-04
+            fsz = 13  ## figure font size
+            figx = 15 ## figure size parameter x
+            figy = 3  ## figure size parameter y
+            mycolors = ["#3F5D7D", "black", "#4169E1"] 
+            th = 0.5
+            plt.figure(figsize=(figx,figy))
             plt.clf()
-            plt.plot(self.time_buffer[name], self.wave_buffer[name])
+            # Alternatives include bmh, fivethirtyeight, ggplot,
+            # dark_background, seaborn-deep, etc
+            plt.style.use('bmh')
+            plt.rcParams['font.family'] = 'sans-serif'
+            plt.rcParams['font.serif'] = 'Ubuntu'
+            plt.rcParams['font.monospace'] = 'Ubuntu Mono'
+            plt.rcParams['font.size'] = fsz
+            plt.rcParams['axes.labelsize'] = fsz
+            plt.rcParams['axes.labelweight'] = 'bold'
+            plt.rcParams['axes.titlesize'] = fsz
+            plt.rcParams['xtick.labelsize'] = fsz-1
+            plt.rcParams['ytick.labelsize'] = fsz-1
+            plt.rcParams['legend.fontsize'] = fsz
+            plt.rcParams['figure.titlesize'] = fsz+2		
+            plt.plot(self.time_buffer[name], signal.detrend(gain*self.wave_buffer[name]),color=mycolors[1], lw = th)
             plt.gcf().autofmt_xdate()
-            plt.title(name)
+            plt.title(name,loc='right')
+            plt.grid(True)
+            plt.gca().spines["top"].set_visible(False)
+            plt.gca().spines["right"].set_visible(False)
+            plt.gca().spines["bottom"].set_color('grey')
+            plt.gca().spines["left"].set_color('grey')
+            plt.ylabel('Acc. ($cm/s/s$)',fontsize=fsz)
             plt.savefig(self.chan_buffer[name], format='jpg')
             plt.close()
             

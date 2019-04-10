@@ -1,0 +1,42 @@
+<!doctype html>
+<html>
+   <style type="text/css">
+  .tg  {border-collapse:collapse;border-spacing:0; margin-left: 10%}
+  .tg td{font-family:Arial, sans-serif;font-size:14px;padding:10px 5px;border-style:solid;border-width:1px;overflow:hidden;word-break:normal;border-color:black;}
+  .tg th{font-family:Arial, sans-serif;font-size:14px;font-weight:normal;padding:10px 5px;border-style:solid;border-width:1px;overflow:hidden;word-break:normal;border-color:black;}
+  .tg .tg-0lax{text-align:left;vertical-align:top}
+  </style>
+  <body>
+    <h1> Earthworm Realtime Trace Viewer V3 </h1>
+    <div style="width: 100%; overflow: hidden;">
+      <div style="width: 50%; float: left;">
+        <table class="tg">
+          <tr>
+            <th class="tg-0lax">Station/Channel/Network/Lock</th>
+            <th class="tg-0lax">Real Time Streaming Link</th>
+          </tr>
+          {% for key in results %}
+          <tr>
+            <td class="tg-0lax">{{ key }}</td>
+            <td class="tg-0lax"><a href="/SCNL/{{ key }}">Click me!</a></td>
+          </tr>
+          {% endfor %}
+        </table>
+      </div>
+      <div style="margin-left: 50%;">
+        <table class="tg">
+          <tr>
+            <th class="tg-0lax">Station</th>
+            <th class="tg-0lax">Real Time Streaming Link</th>
+          </tr>
+          {% for key in results2 %}
+          <tr>
+            <td class="tg-0lax">{{ key }}</td>
+            <td class="tg-0lax"><a href="/Station/{{ key }}">Click me!</a></td>
+          </tr>
+          {% endfor %}
+        </table>
+      </div>
+    </div>
+  </body>
+</html>

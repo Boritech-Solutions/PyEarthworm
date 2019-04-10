@@ -1,0 +1,13 @@
+<html>
+  <head>
+    <title>Graph Streaming Demonstration</title>
+  </head>
+  <body>
+    <h1>{{ value }}</h1>
+    {% if exist %}
+      <img src="{{ url_for('graph_feed', StaStr=station) }}">
+    {% else %}    
+      <img src="tmp/Stop.png">
+    {% endif %}
+  </body>
+</html>

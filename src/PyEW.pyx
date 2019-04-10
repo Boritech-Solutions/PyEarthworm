@@ -185,12 +185,40 @@ class stopThread(threading.Thread):
       inp = self.temp.getmsg_type(113)
       if inp != (0,0):
         pid = inp[1][:inp[0]].decode('UTF-8')
-        if pid == str(os.getpid()):
+        if str(os.getpid()) in str(pid):
           self.temp.detach()
           self.funct()
         else:
           print "Not my pid"
     print("Stop thread successfully ended")
+    
+  def stop(self):
+    print("Heartbeat shutdown requested")
+    self.runs = False
+    
+class restartThread(threading.Thread):
+  """restartThread class"""
+  def __init__(self):
+    threading.Thread.__init__(self)
+    
+  def setup (self, ringid, modid, instid, mfunct):
+    self.temp = transport(ringid, modid, instid)
+    self.funct = mfunct
+    self.runs = True
+  
+  def run(self):
+    self.temp.flush()
+    while self.runs:
+      time.sleep(0.1)
+      inp = self.temp.getmsg_type(107)
+      if inp != (0,0):
+        pid = inp[1][:inp[0]].decode('UTF-8')
+        if str(os.getpid()) in str(pid):
+          self.temp.detach()
+          self.funct()
+        else:
+          print "Not my pid"
+    print("Restart thread successfully ended")
     
   def stop(self):
     print("Ring thread shutdown requested")
@@ -207,6 +235,7 @@ cdef class EWModule:
   cdef bint OK
   HBT = heartbeatTimer()
   RNG = stopThread()
+  RTH = restartThread()
   ringcom = []
   
   def __init__(self, def_ring, mod_id, inst_id, hb_time, db = False):
@@ -221,6 +250,8 @@ cdef class EWModule:
     self.HBT.start()
     self.RNG.setup(self.my_ring, self.my_modid, self.my_instid, self.goodbye)
     self.RNG.start()
+    self.RTH.setup(self.my_ring, self.my_modid, self.my_instid, self.goodbye)
+    self.RTH.start()
     self.OK = True
     
   def send_hb(self):
@@ -235,10 +266,11 @@ cdef class EWModule:
       self.OK = False
       self.HBT.stop()
       self.RNG.stop()
+      self.RTH.stop()
       self.default_ring.detach()
       for ring in self.ringcom:
         ring.detach()
-      time.sleep(self.hb)
+      time.sleep(self.hb - 1)
       print("Graceful Shutdown")
       quit()
   
@@ -263,6 +295,7 @@ cdef class EWModule:
     if self.debug:
       print "Get msg from array"
     if buf_ring < len(self.ringcom) and self.OK:
+      status = ''
       msg = self.ringcom[buf_ring].copymsg_type(msg_type)
       if msg != (0,0):
         if self.debug:
@@ -275,6 +308,7 @@ cdef class EWModule:
     if self.debug:
       print "Get msg from array"
     if buf_ring < len(self.ringcom) and self.OK:
+      status = ''
       msg = self.ringcom[buf_ring].copymsg_type(msg_type)
       if msg != (0,0):
         if self.debug:

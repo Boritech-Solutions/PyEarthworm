@@ -156,6 +156,7 @@ I hope that you can use these examples to build your own modules that are shared
 -------------------
 
   * I would like to thank ISTI and the EW community, without their contributions to EW this software would not be possible.
+  * The development and maintenance of PyEarthworm is funded entirely by software and research contracts with Boritech Solutions.
   * The python and cython community.
   
 #### AD:

@@ -14,11 +14,16 @@
 #    You should have received a copy of the GNU Affero General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>
 
-from distutils.core import setup
-from distutils.extension import Extension
+try:
+    from setuptools import setup
+    from setuptools import Extension
+except ImportError:
+    from distutils.core import setup
+    from distutils.extension import Extension
+
 from Cython.Build import cythonize
 
-extensions = [Extension("PyEW", ["PyEW.pyx"])]
+extensions = [Extension("PyEW", ["PyEW.pyx"], define_macros=[("WIN32_LEAN_AND_MEAN",None),("_WINNT",None),("_INTEL",None),("_CRT_SECURE_NO_DEPRECATE",None),("_CRT_SECURE_NO_WARNINGS",None)])]
 setup(
     ext_modules = cythonize(extensions)
 )

@@ -1,44 +1,70 @@
 
+/*
+ *   THIS FILE IS UNDER RCS - DO NOT MODIFY UNLESS YOU HAVE
+ *   CHECKED IT OUT USING THE COMMAND CHECKOUT.
+ *
+ *    $Id: transport.c 6803 2016-09-09 06:06:39Z et $
+ *
+ *    Revision history:
+ *     $Log$
+ *     Revision 1.8  2007/11/28 16:38:08  paulf
+ *     minor change to wording of OpenFileMapping error
+ *
+ *     Revision 1.7  2007/03/29 13:46:40  paulf
+ *     fixed yet another time_t casting issue in tport_buferror()
+ *
+ *     Revision 1.6  2006/10/05 14:49:51  stefan
+ *     commented out unused extern in tport_syserror
+ *
+ *     Revision 1.5  2005/04/15 17:31:27  dietz
+ *     Modified tport_bufthr() to look for termination flag in both the
+ *     public and private rings.
+ *
+ *     Revision 1.4  2004/03/22 21:15:59  kohler
+ *     Added: #include <stdlib.h>
+ *
+ *     Revision 1.3  2001/05/04 23:43:54  dietz
+ *     Changed flag arg of tport_putflag from short to int to handle
+ *     processids properly.
+ *
+ *     Revision 1.2  2000/06/02 18:19:48  dietz
+ *     Fixed tport_putmsg,tport_copyto to always release semaphore before returning
+ *
+ *     Revision 1.1  2000/02/14 18:53:30  lucky
+ *     Initial revision
+ *
+ *
+ */
 
-  /********************************************************************
-   *                                                       10/1998    *
-   *                           transport.c                            *
-   *                                                                  *
-   *   Transport layer functions to access shared memory regions.     *
-   *                                                                  *
-   *   written by Lynn Dietz, Will Kohler with inspiration from       *
-   *       Carl Johnson, Alex Bittenbinder, Barbara Bogaert           *
-   *                                                                  *
-   ********************************************************************/
+/********************************************************************/
+/*                                                        6/2000    */
+/*                           transport.c                            */
+/*                                                                  */
+/*   Transport layer functions to access shared memory regions.     */
+/*                                                                  */
+/*   written by Lynn Dietz, Will Kohler with inspiration from       */
+/*       Carl Johnson, Alex Bittenbinder, Barbara Bogaert           */
+/*                                                                  */
+/********************************************************************/
 
-#include <platform.h>
-#include <sys/types.h> 
+/* ***** Notes on development, delete when appropriate
+1. Change the quotes for the transport.h and earthworm.h includes
+   when these are moved to the appropriately pathed included directory.
+*/
+#include <windows.h>
+#include <sys/types.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
-/* #include <stropts.h> */
 #include <string.h>
 #include <time.h>
-#ifdef _USE_POSIX_SHM
-# include <sys/mman.h>
-# include <fcntl.h>
-# include <sys/stat.h>
-# include <semaphore.h>
-#else
-# include <sys/ipc.h>
-# include <sys/shm.h>
-# include <sys/sem.h>
-#endif 
-#ifdef _USE_PTHREADS
-# include <pthread.h>
-#else
-# include <thread.h>
-#endif
+#include <process.h>
 #include <transport.h>
 
 static short Put_Init=1;           /* initialization flag */
 static short Get_Init=1;           /* initialization flag */
 static short Copyfrom_Init=1;      /* initialization flag */
+static short Copyto_Init  =1;      /* initialization flag */
 static short Flag_Init=1;          /* initialization flag */
 static SHM_INFO smf_region;
 static long shm_flag_key;
@@ -51,19 +77,16 @@ static long shm_flag_key;
 #define FF_GETFLAG 4
 #define FF_CLASSIFY 5
 
-#define FLAG_LOCK_TRIES 3
-#define RING_LOCK_TRIES 3
-
 /* These functions are for internal use by transport functions only
-   ****************************************************************/ 
+   ****************************************************************/
 void  tport_syserr  ( char *, long );
 void  tport_buferror( short, char * );
 static int tport_doFlagOp( SHM_INFO* region, int pid, int op ); 
 
-/* These statements and variables are required by the functions of 
-   the input-buffering thread 
+/* These statements and variables are required by the functions of
+   the input-buffering thread
    ***************************************************************/
-#include <earthworm.h>  
+#include "earthworm.h"
 volatile SHM_INFO *PubRegion;      /* transport public ring      */
 volatile SHM_INFO *BufRegion;      /* pointer to private ring    */
 volatile MSG_LOGO *Getlogo;        /* array of logos to copy     */
@@ -71,152 +94,75 @@ volatile short     Nget;           /* number of logos in getlogo */
 volatile unsigned  MaxMsgSize;     /* size of message buffer     */
 volatile char     *Message;        /* message buffer             */
 static unsigned char MyModuleId;   /* module id of main thread   */
-unsigned char      MyInstid;       /* inst id of main thread     */
+unsigned char      MyInstid;       /* instid of main thread      */
 unsigned char      TypeError;      /* type for error messages    */
-
-#ifdef _USE_POSIX_SHM
-/* Compatibility fuctions to establish conversion between IPC-style keys (used
-	by most earthworm setup files) to POSIX shared memory path identifiers.
-	We need this kludge until everyone is ready to convert their setup files
-	to use a POSIX path instead of an IPC key.  (Each  module would also
-	need to parse the POSIX path instead of an IPC key, and the SHM_INFO struct
-	would need to have POSIX path and file descriptor members instead of IPC
-	key and ID members.)  Since the goal for now is a fairly transparent migration
-	to POSIX, we'll keep the IPC-style keys and make an equivalent path from the key.
-	For those POSIX machines that actually implement POSIX shared memory paths in
-	the filesystem (e.g., IRIX), make sure the BASE macros below refer to an
-	appropriate place, or modify as needed. */
-#define BASE_SHM "/tmp/ew_shm_"
-#define BASE_SEM "/tmp/ew_sem_"
-#define BASE_SHM_FLAG "/tmp/ew_shmFlag_"
-#define BASE_SEM_FLAG "/tmp/ew_semFlag_"
-static char *key_2_path(long memkey, int is_shm)
-{
-	static char path[256];
-	if ( memkey == shm_flag_key ) {
-		sprintf(path,"%s%d", is_shm ? BASE_SHM_FLAG : BASE_SEM_FLAG, memkey);
-		return(path);
-	} else { 
-		sprintf(path,"%s%d", is_shm ? BASE_SHM : BASE_SEM, memkey);
-		return(path);
-	}
-}
-static int path_2_key(const char *path, int is_shm)
-{
-	return(atoi(path+strlen(is_shm ? BASE_SHM : BASE_SEM)));
-}
-#endif
 
 /******************** function tport_create *************************/
 /*         Create a shared memory region & its semaphore,           */
-/*           attach to it and initialize header values.             */  
+/*           attach to it and initialize header values.             */
 /********************************************************************/
-
 void tport_create( SHM_INFO *region,   /* info structure for memory region  */
-		   long      nbytes,   /* size of shared memory region      */
-		   long      memkey )  /* key to shared memory region       */ 
+                   long      nbytes,   /* size of shared memory region      */
+                   long      memkey )  /* key to shared memory region       */
 {
    SHM_HEAD       *shm;       /* pointer to start of memory region */
-
-#ifdef _USE_POSIX_SHM
-   int             regid;     /* shared memory file descriptor   */
-   void	           *shmbuf;   /* shared memory pointer           */
-   sem_t           *semid;    /* semaphore identifier            */
-   int mode, omask, prot, flags;
-
-/**** Destroy memory region if it already exists ****/
-   if ( (regid = shm_open( key_2_path(memkey,1), O_RDONLY, 0)) != -1 ) {
-      if ( close( regid ) == -1 )
-         tport_syserr( "tport_create close", memkey );
-      if ( shm_unlink(key_2_path(memkey,1)) == -1 )
-         tport_syserr( "tport_create shm_unlink", memkey );
-   }
-
-/**** Temporarily clear any existing file creation mask */
-   mode = 0664;
-   omask = umask(0);
- 
-/**** Connect and map shared memory region */
-   flags = O_CREAT | O_RDWR | O_EXCL;
-   if ( (regid = shm_open( key_2_path(memkey,1), flags, mode )) == -1 )
-      tport_syserr( "tport_create shm_open", memkey );
-
-   prot = PROT_READ | PROT_WRITE;
-   flags = MAP_SHARED | MAP_AUTOGROW;
-   if ( (shmbuf = mmap(0, nbytes, prot, flags, regid, 0)) == MAP_FAILED )
-      tport_syserr( "tport_create mmap", memkey );
-
-   shm = (SHM_HEAD *)shmbuf;
-  
-#else
-   int             regid;     /* shared memory region identifier   */
-   int             semid;     /* semaphore identifier              */
-   struct shmid_ds shmbuf;    /* shared memory data structure      */
-   int             res;
-/**** Destroy memory region if it already exists ****/
-
-   if ( (regid = shmget( memkey, nbytes, 0 )) != -1 ) {
-      res = shmctl( regid, IPC_RMID, &shmbuf );
-      if ( res == -1 )
-         tport_syserr( "tport_create shmctl", memkey );
-   }
+   HANDLE         hshare;     // Handle to memory shared file
+   HANDLE         hmutex;     // Handle to mutex object
+   char           share[20];  // Shared file name from memkey
+   char           mutex[20];  // Mutex name
+   int            err;        // Error code from GetLastError()
 
 /**** Create shared memory region ****/
-
-   regid = shmget( memkey, nbytes, IPC_CREAT | 0666 );
-   if ( regid == -1 )
-      tport_syserr( "tport_create shmget", memkey );
+   sprintf(share, "SHR_%ld", memkey);
+   hshare = CreateFileMapping(
+      INVALID_HANDLE_VALUE,  // Request memory file (swap space)
+      NULL,                // Security attributes
+      PAGE_READWRITE,      // Access restrictions
+      0,                   // High order size (for very large mappings)
+      nbytes,              // Low order size
+      share);              // Name of file for other processes
+   if ( hshare == NULL )
+   {
+      err = GetLastError();
+      tport_syserr( "CreateFileMapping", err);
+   }
 
 /**** Attach to shared memory region ****/
-
-   shm = (SHM_HEAD *) shmat( regid, 0, SHM_RND );
-   if ( shm == (SHM_HEAD *) -1 )
-      tport_syserr( "tport_create shmat", memkey );
-#endif
+   shm = (SHM_HEAD *) MapViewOfFile(
+      hshare,              // File object to map
+      FILE_MAP_WRITE,      // Access desired
+      0,                   // High-order 32 bits of file offset
+      0,                   // Low-order 32 bits of file offset
+      nbytes);             // Number of bytes to map
+   if ( shm == NULL )
+   {
+      err = GetLastError();
+      tport_syserr( "MapViewOfFile", err );
+   }
 
 /**** Initialize shared memory region header ****/
    shm->nbytes = nbytes;
    shm->keymax = nbytes - sizeof(SHM_HEAD);
-   shm->keyin  = 0;                           /* cosmetic change 980428:ldd */
+   shm->keyin  = sizeof(SHM_HEAD);
    shm->keyold = shm->keyin;
-   shm->flag   = 0;
+   shm->flag = 0;
 
-#ifdef _USE_POSIX_SHM
-/**** Destroy semaphore if it already exists ****/
-   if ( (semid = sem_open(key_2_path(memkey,0), 0)) != (sem_t *)-1 ) {
-      if ( sem_close(semid) == -1 )
-         tport_syserr( "tport_create sem_close", memkey );
-      if ( sem_unlink(key_2_path(memkey,0)) == -1 )
-         tport_syserr( "tport_create sem_unlink", memkey );
+/**** Make semaphore for this shared memory region & set semval = SHM_FREE ****/
+   sprintf(mutex, "MTX_%ld", memkey);
+   hmutex = CreateMutex(
+      NULL,                // Security attributes
+      FALSE,               // Initial ownership
+      mutex);              // Name of mutex (derived from memkey)
+   if ( hmutex == NULL )
+   {
+      err = GetLastError();
+      tport_syserr( "CreateMutex", err);
    }
-
-/**** Make semaphore for this shared memory region & set semval = SHM_FREE ****/
-   if ( (semid = sem_open(key_2_path(memkey,0), O_CREAT, mode, SHM_FREE)) == (sem_t *)-1 )
-      tport_syserr( "tport_create semget", memkey );
-
-/**** Restore any existing file creation mask */
-   if ( omask )
-   	umask(omask);
-#else
-/**** Make semaphore for this shared memory region & set semval = SHM_FREE ****/
-
-   semid = semget( memkey, 1, IPC_CREAT | 0666 );
-   if ( semid == -1 )
-      tport_syserr( "tport_create semget", memkey );
-
-   /*
-   semarg->val = SHM_FREE;
-   res = semctl( semid, 0, SETVAL, semarg );
-   */
-   res = semctl( semid, 0, SETVAL, SHM_FREE );
-   if ( res == -1 )
-      tport_syserr( "tport_create semctl", memkey );
-#endif
 
 /**** set values in the shared memory information structure ****/
    region->addr = shm;
-   region->mid  = regid;
-   region->sid  = semid;
+   region->hShare = hshare;
+   region->hMutex = hmutex;
    region->key  = memkey;
 }
 
@@ -225,153 +171,96 @@ void tport_create( SHM_INFO *region,   /* info structure for memory region  */
 /*                Destroy a shared memory region.                    */
 /*********************************************************************/
 
-void tport_destroy( SHM_INFO *region )         
+void tport_destroy( SHM_INFO *region )
 {
-#ifndef _USE_POSIX_SHM
-   int res;
-   struct shmid_ds shmbuf;    /* shared memory data structure      */
-#endif
+   int err;
 
-#ifdef _USE_POSIX_SHM
-/***** Close and delete shared memory region  *****/
-
-   if ( munmap(region->addr,region->addr->nbytes) == -1 )
-      tport_syserr( "tport_destroy munmap", region->key );
-
-   if ( close( region->mid ) == -1 )
-      tport_syserr( "tport_destroy close", region->key );
-
-   if ( shm_unlink(key_2_path(region->key,1)) == -1 )
-      tport_syserr( "tport_destroy sem_unlink", region->key );
-
-/***** Close and delete semaphore  *****/
-   if ( sem_close( region->sid ) == -1 )
-      tport_syserr( "tport_destroy sem_close", region->key );
-
-   if ( sem_unlink(key_2_path(region->key,0)) == -1 )
-      tport_syserr( "tport_destroy sem_unlink", region->key );
-
-#else
 /***** Detach from shared memory region *****/
-
-   res = shmdt( (char *) region->addr );
-   if ( res == -1 )
-      tport_syserr( "tport_destroy shmdt", region->key );
+   if(!UnmapViewOfFile( region->addr )) {
+      err = GetLastError();
+      tport_syserr( "UnmapViewOfFile", err);
+   }
 
 /***** Destroy semaphore set for shared memory region *****/
+   if(!CloseHandle(region->hMutex)) {
+      err = GetLastError();
+      tport_syserr( "CloseHandle (mutex)", err);
+   }
 
-   /*
-   semarg->val = 0;
-   res = semctl( region->sid, 0, IPC_RMID, semarg );
-   */
-   res = semctl( region->sid, 0, IPC_RMID, 0 );
-   if ( res == -1 )
-      tport_syserr( "tport_destroy semctl", region->key );
 
 /***** Destroy shared memory region *****/
-
-   res = shmctl( region->mid, IPC_RMID, &shmbuf );
-   if ( res == -1 )
-      tport_syserr( "tport_destroy shmctl", region->key );
-#endif
+   if(!CloseHandle(region->hShare)) {
+      err = GetLastError();
+      tport_syserr( "CloseHandle (share)", err);
+   }
 }
-
 
 /******************** function tport_attach *************************/
 /*            Map to an existing shared memory region.              */
 /********************************************************************/
 
 void tport_attach( SHM_INFO *region,   /* info structure for memory region  */
-		   long      memkey )  /* key to shared memory region       */
+                   long      memkey )  /* key to shared memory region       */
 {
-   SHM_HEAD  *shm;         /* pointer to start of memory region */
-   long       nbytes;      /* size of memory region             */
+   SHM_HEAD       *shm;       /* pointer to start of memory region */
+   HANDLE         hshare;     // Handle to memory shared file
+   HANDLE         hmutex;     // Handle to mutex object
+   char           share[20];  // Shared file name from memkey
+   char           mutex[20];  // Mutex name
+   int            err;        // Error code from GetLastError()
 
-#ifdef _USE_POSIX_SHM
-   int             regid;     /* shared memory file descriptor   */
-   void	           *shmbuf;   /* shared memory pointer           */
-   sem_t           *semid;    /* semaphore identifier            */
-   int prot, flags;
-
-/**** open and map header; find out size memory region; close ****/
-   if ( (regid = shm_open( key_2_path(memkey,1), O_RDONLY, 0)) == -1 ) {
-      if ( memkey != shm_flag_key ) 
-      	tport_syserr( "tport_attach shm_open ->header", memkey );
+/**** Create shared memory region ****/
+   sprintf(share, "SHR_%ld", memkey);
+   hshare = OpenFileMapping(
+       FILE_MAP_WRITE,
+       TRUE,
+       share);
+   if ( hshare == NULL )
+   {
+      if ( memkey != shm_flag_key ) {
+         err = GetLastError();
+         tport_syserr( "OpenFileMapping (Earthworm may not be running or your environment may not be set properly)", err);
+      }
       /* Must have been called when using an old startstop, so no flag ring */
       smf_region.addr = NULL;
       return;
    }
-   if ( (shmbuf = mmap(0, sizeof(SHM_HEAD), PROT_READ, MAP_SHARED, regid, 0)) == MAP_FAILED )
-      tport_syserr( "tport_attach mmap", memkey );
-   shm = (SHM_HEAD *)shmbuf;
-#else
-   int        regid;       /* shared memory region identifier   */
-   int        semid;       /* semaphore identifier              */
-   int        res;
 
-/**** attach to header; find out size memory region; detach ****/
-
-   regid = shmget( memkey, sizeof( SHM_HEAD ), 0 );
-   if ( regid == -1 ) {
-      if ( memkey != shm_flag_key ) 
-         tport_syserr( "tport_attach shmget ->header", memkey );
-      /* Must have been called when using an old startstop, so no flag ring */
-      smf_region.addr = NULL;
-      return;
+/**** Attach to shared memory region ****/
+   shm = (SHM_HEAD *) MapViewOfFile(
+      hshare,              // File object to map
+      FILE_MAP_WRITE,      // Access desired
+      0,                   // High-order 32 bits of file offset
+      0,                   // Low-order 32 bits of file offset
+      0);                  // Number of bytes to map
+   if ( shm == NULL )
+   {
+      err = GetLastError();
+      tport_syserr( "MapViewOfFile", err );
    }
-   shm = (SHM_HEAD *) shmat( regid, 0, SHM_RND );
-   if ( shm == (SHM_HEAD *) -1 )
-      tport_syserr( "tport_attach shmat ->header", memkey );
-#endif
 
-   nbytes = shm->nbytes;
-
-#ifdef _USE_POSIX_SHM
-   if ( close( regid ) == -1 )
-      tport_syserr( "tport_attach close ->header",  memkey );
-
-/**** reopen and map entire header; open semaphore ****/
-   if ( (regid = shm_open( key_2_path(memkey,1), O_RDWR, 0)) == -1 )
-      tport_syserr( "tport_attach shm_open ->header", memkey );
-
-   prot = PROT_READ | PROT_WRITE;
-   flags = MAP_SHARED | MAP_AUTOGROW;
-   if ( (shmbuf = mmap(0, nbytes, prot, flags, regid, 0)) == MAP_FAILED )
-      tport_syserr( "tport_attach mmap ->region", memkey );
-   shm = (SHM_HEAD *)shmbuf;
-
-   if ( (semid = sem_open(key_2_path(memkey,0), 0)) == (sem_t *)-1 )
-      tport_syserr( "tport_attach sem_open", memkey );
-#else
-   res = shmdt( (char *) shm );
-   if ( res == -1 )
-      tport_syserr( "tport_attach shmdt ->header", memkey );
-
-/**** reattach to the entire memory region; get semaphore ****/
-
-   regid = shmget( memkey, nbytes, 0 );
-   if ( regid == -1 )
-      tport_syserr( "tport_attach shmget ->region", memkey );
-
-   shm = (SHM_HEAD *) shmat( regid, 0, SHM_RND );
-   if ( shm == (SHM_HEAD *) -1 )
-      tport_syserr( "tport_attach shmat ->region", memkey );
-
-   semid = semget( memkey, 1, 0 );
-   if ( semid == -1 )
-      tport_syserr( "tport_attach semget", memkey );
-#endif
+/**** Make semaphore for this shared memory region & set semval = SHM_FREE ****/
+   sprintf(mutex, "MTX_%ld", memkey);
+   hmutex = CreateMutex(
+      NULL,                // Security attributes
+      FALSE,               // Initial ownership
+      mutex);              // Name of mutex (derived from memkey)
+   if ( hmutex == NULL )
+   {
+      err = GetLastError();
+      tport_syserr( "CreateMutex", err);
+   }
 
 /**** set values in the shared memory information structure ****/
    region->addr = shm;
-   region->mid  = regid;
-   region->sid  = semid;
+   region->hShare = hshare;
+   region->hMutex = hmutex;
    region->key  = memkey;
 
 /**** attach to flag if necessary; add our pid to flag ****/
    if ( Flag_Init ) {
    	  Flag_Init = 0;
-   	  shm_flag_key = GetKeyWithDefault( SHM_FLAG_RING, SHM_FLAG_DEFAULT_KEY );
+      shm_flag_key = GetKeyWithDefault( SHM_FLAG_RING, SHM_FLAG_DEFAULT_KEY );
    	  tport_attach( &smf_region, shm_flag_key );
    }
    tport_addToFlag( region, getpid() );
@@ -383,68 +272,61 @@ void tport_attach( SHM_INFO *region,   /* info structure for memory region  */
 
 void tport_detach( SHM_INFO *region )
 {
-#ifdef _USE_POSIX_SHM
-   struct stat shm_stat;
+   int err;
 
-   /* silently return if the memory region has already been closed */
-   if ( fstat( region->mid, &shm_stat) == -1 )
-      if ( errno == EBADF )
-         return;
-# if 0
-   /* munmap is bad to do here because other threads will lose the region */
-   if ( munmap(region->addr,region->addr->nbytes) == -1 )
-      tport_syserr( "tport_detach munmap", region->key );
-# endif
-   if ( close( region->mid ) == -1 )
-      tport_syserr( "tport_detach close", region->key );
-#else
-   int res;
 /***** Detach from shared memory region *****/
+   if(!UnmapViewOfFile( region->addr )) {
+      err = GetLastError();
+      tport_syserr( "UnmapViewOfFile", err);
+   }
 
-   res = shmdt( (char *) region->addr );
-   if ( res == -1 )
-      tport_syserr( "tport_detach shmdt", region->key );
-#endif
+/***** Destroy semaphore set for shared memory region *****/
+   if(!CloseHandle(region->hMutex)) {
+      err = GetLastError();
+      tport_syserr( "CloseHandle (mutex)", err);
+   }
+
+
+/***** Destroy shared memory region *****/
+   if(!CloseHandle(region->hShare)) {
+      err = GetLastError();
+      tport_syserr( "CloseHandle (share)", err);
+   }
 }
 
 
 
 /*********************** function tport_putmsg ***********************/
-/*            Put a message into a shared memory region.	     */
+/*            Put a message into a shared memory region.             */
 /*            Assigns a transport-layer sequence number.             */
 /*********************************************************************/
 
 int tport_putmsg( SHM_INFO *region,    /* info structure for memory region    */
-		  MSG_LOGO *putlogo,   /* type,module,instid of incoming msg  */
-		  long      length,    /* size of incoming message            */
-		  char     *msg )      /* pointer to incoming message         */
+                  MSG_LOGO *putlogo,   /* type, module, instid of incoming msg */
+                  long      length,    /* size of incoming message            */
+                  char     *msg )      /* pointer to incoming message         */
 {
    volatile static MSG_TRACK  trak[NTRACK_PUT];   /* sequence number keeper   */
    volatile static int        nlogo;              /* # of logos seen so far   */
-   int               	      it;                 /* index into trak          */
-#ifndef _USE_POSIX_SHM
-   struct sembuf     sops;             /* semaphore operations; 
-                                             changed to non-static 980424:ldd */
-   int res;
-#endif
+   int                        it;                 /* index into trak          */
    SHM_HEAD         *shm;              /* pointer to start of memory region   */
    char             *ring;             /* pointer to ring part of memory      */
-   long              ir;               /* index into memory ring              */
+   unsigned long     ir;               /* index into memory ring              */
    long              nfill;            /* # bytes from ir to ring's last-byte */
    long              nwrap;            /* # bytes to wrap to front of ring    */
    TPORT_HEAD        hd;               /* transport layer header to put       */
    char             *h;                /* pointer to transport layer header   */
    TPORT_HEAD        old;              /* transport header of oldest msg      */
    char             *o;                /* pointer to oldest transport header  */
-   int              j;
-   int              triesLeft;
+   int j;
+   int retval = PUT_OK;                /* return value for this function      */
 
 /**** First time around, init the sequence counters, semaphore controls ****/
 
    if (Put_Init)
    {
        nlogo    = 0;
-       
+
        for( j=0 ; j < NTRACK_PUT ; j++ )
        {
           trak[j].memkey      = 0;
@@ -469,39 +351,24 @@ int tport_putmsg( SHM_INFO *region,    /* info structure for memory region    */
 
    if ( length + sizeof(TPORT_HEAD) > shm->keymax )
    {
-      fprintf( stdout, 
+      fprintf( stdout,
               "ERROR: tport_putmsg; message too large (%ld) for Region %ld\n",
                length, region->key);
-      return( PUT_TOOBIG ); 
+      return( PUT_TOOBIG );
    }
-   
+
 /**** Change semaphore; let others know you're using tracking structure & memory  ****/
 
-#ifdef _USE_POSIX_SHM
-   if ( sem_wait(region->sid) == -1 )
-      tport_syserr( "tport_putmsg sem_wait ->inuse", region->key );
-#else
-   sops.sem_num = 0;   /* moved outside Put_Init loop 980424:ldd */
-   sops.sem_flg = 0;   /* moved outside Put_Init loop 980424:ldd */ 
-   sops.sem_op = SHM_INUSE;
-   triesLeft = RING_LOCK_TRIES;
-   while ( triesLeft > 0 && (res = semop( region->sid, &sops, 1 )) == -1 ) {
-      if ( errno != EINTR )
-          break;
-      triesLeft--;
-   }   
-   if (res == -1)
-      tport_syserr( "tport_putmsg semop ->inuse", region->key );
-#endif
-             
+   WaitForSingleObject(region->hMutex, INFINITE);
+
 /**** Next, find incoming logo in list of combinations already seen ****/
 
    for( it=0 ; it < nlogo ; it++ )
-   {   
-      if ( region->key     != trak[it].memkey      )  continue;
-      if ( putlogo->type   != trak[it].logo.type   )  continue;
-      if ( putlogo->mod    != trak[it].logo.mod    )  continue;
-      if ( putlogo->instid != trak[it].logo.instid )  continue;
+   {
+      if ( region->key     != trak[it].memkey     )  continue;
+      if ( putlogo->type   != trak[it].logo.type  )  continue;
+      if ( putlogo->mod    != trak[it].logo.mod   )  continue;
+      if ( putlogo->instid != trak[it].logo.instid ) continue;
       goto build_header;
    }
 
@@ -509,9 +376,10 @@ int tport_putmsg( SHM_INFO *region,    /* info structure for memory region    */
 
    if ( nlogo == NTRACK_PUT )
    {
-      fprintf( stdout, 
-              "ERROR: tport_putmsg; exceeded NTRACK_PUT, msg not sent\n"); 
-      return( PUT_NOTRACK );
+      fprintf( stdout,
+              "ERROR: tport_putmsg; exceeded NTRACK_PUT, msg not sent\n");
+      retval = PUT_NOTRACK;
+      goto release_semaphore;
    }
    it = nlogo;
    trak[it].memkey =  region->key;
@@ -533,7 +401,7 @@ build_header:
        shm->keyin  = shm->keyin  % shm->keymax;
        shm->keyold = shm->keyold % shm->keymax;
        if ( shm->keyin <= shm->keyold ) shm->keyin += shm->keymax;
-     /*fprintf( stdout, 
+     /*fprintf( stdout,
                "NOTICE: tport_putmsg; keyin wrapped & reset; Region %ld\n",
                 region->key );*/
    }
@@ -546,16 +414,17 @@ build_header:
       ir = shm->keyold % shm->keymax;
       if ( ring[ir] != FIRST_BYTE )
       {
-          fprintf( stdout, 
+          fprintf( stdout,
                   "ERROR: tport_putmsg; keyold not at FIRST_BYTE, Region %ld\n",
                    region->key );
-          exit( 1 );
+          retval = TPORT_FATAL;
+          goto release_semaphore;
       }
       for ( j=0 ; j < sizeof(TPORT_HEAD) ; j++ )
       {
          if ( ir >= shm->keymax )   ir -= shm->keymax;
          o[j] = ring[ir++];
-      } 
+      }
       shm->keyold += sizeof(TPORT_HEAD) + old.size;
    }
 
@@ -593,31 +462,27 @@ build_header:
 
 /**** Finished with shared memory, let others know via semaphore ****/
 
-#ifdef _USE_POSIX_SHM
-   if ( sem_post(region->sid) == -1 )
-      tport_syserr( "tport_putmsg sem_post ->inuse", region->key );
-#else
-   sops.sem_op = SHM_FREE;
-   res = semop( region->sid, &sops, 1 );  
-   if (res == -1)
-      tport_syserr( "tport_putmsg semop ->free", region->key ); 
-#endif
+release_semaphore:
+   ReleaseMutex(region->hMutex);
 
-   return( PUT_OK ); 
+   if( retval == TPORT_FATAL ) exit( 1 );
+   return( retval );
 }
+
 
 /******************** function tport_getmsg_base**********************/
 /*     Find (and possibly get) a message out of shared memory.       */
 /*********************************************************************/
 
-int tport_getmsg( 
+static int tport_getmsg_base(
           SHM_INFO  *region,   /* info structure for memory region  */
 		  MSG_LOGO  *getlogo,  /* requested logo(s)                 */
 		  short      nget,     /* number of logos in getlogo        */
-		  MSG_LOGO  *logo,     /* logo of retrieved msg 	        */
+		  MSG_LOGO  *logo,     /* logo of retrieved msg 	    */
 		  long      *length,   /* size of retrieved message         */
-		  char      *msg,      /* retrieved message (may be NULL)   */
-		  long       maxsize)  /* max length for retrieved message  */
+		  char      *msg,      /* retrieved message                 */
+		  long       maxsize,  /* max length for retrieved message  */
+		  char       dont_copy)/* if <>0, don't copy message into msg */
 {
    static MSG_TRACK  trak[NTRACK_GET]; /* sequence #, outpointer keeper     */
    static int        nlogo;            /* # modid,type,instid combos so far */
@@ -625,7 +490,7 @@ int tport_getmsg(
    SHM_HEAD         *shm;              /* pointer to start of memory region */
    char             *ring;             /* pointer to ring part of memory    */
    TPORT_HEAD       *tmphd;            /* temp pointer into shared memory   */
-   long              ir;               /* index into the ring               */
+   unsigned long     ir;               /* index into the ring               */
    long              nfill;            /* bytes from ir to ring's last-byte */
    long              nwrap;            /* bytes to grab from front of ring  */
    TPORT_HEAD        hd;               /* transport header from memory      */
@@ -648,7 +513,7 @@ int tport_getmsg(
 
    if (Get_Init)
    {
-       nlogo = 0;  
+       nlogo = 0;
 
        for( i=0 ; i < NTRACK_GET ; i++ )
        {
@@ -677,15 +542,15 @@ int tport_getmsg(
           trakked = 1;  /* found it in the trakking list! */
           break;
        }
-       if( trakked ) continue;  
+       if( trakked ) continue;
     /* Make an entry in trak for this logo; if there's room */
-       if ( nlogo < NTRACK_GET ) 
+       if ( nlogo < NTRACK_GET )
        {
           it = nlogo;
           trak[it].memkey = region->key;
-          trak[it].logo   = getlogo[j];  
-          nlogo++;  
-       }       
+          trak[it].logo   = getlogo[j];
+          nlogo++;
+       }
    }
 
 /**** find latest starting index to look for any of the requested logos ****/
@@ -699,8 +564,8 @@ findkey:
        if ( trak[it].memkey != region->key ) continue;
        for ( j=0 ; j < nget ; j++ )  /* for all requested message logos */
        {
-          if((getlogo[j].type   == trak[it].logo.type   || getlogo[j].type==WILD) &&
-             (getlogo[j].mod    == trak[it].logo.mod    || getlogo[j].mod==WILD)  &&
+          if((getlogo[j].type   == trak[it].logo.type   || getlogo[j].type==WILD  ) &&
+             (getlogo[j].mod    == trak[it].logo.mod    || getlogo[j].mod==WILD   ) &&
              (getlogo[j].instid == trak[it].logo.instid || getlogo[j].instid==WILD) )
           {
              if ( trak[it].keyout > keyget )  keyget = trak[it].keyout;
@@ -714,10 +579,10 @@ findkey:
 
    if ( keyget > keyin )
    {
-      keyold = shm->keyold; 
-      for ( it=0 ; it < nlogo ; it++ )  
+      keyold = shm->keyold;
+      for ( it=0 ; it < nlogo ; it++ )
       {
-         if( trak[it].memkey == region->key ) 
+         if( trak[it].memkey == region->key )
          {
           /* reset keyout */
 /*DEBUG*/    /*printf("tport_getmsg: Pre-reset:  keyout=%10u    keyold=%10u  keyin=%10u\n",
@@ -728,24 +593,24 @@ findkey:
 
           /* make sure new keyout points to keyin or to a msg's first-byte; */
           /* if not, we've been lapped, so set keyout to keyold             */
-             ir    = trak[it].keyout; 
-             tmphd = (TPORT_HEAD *) &ring[ir];  
-             if ( trak[it].keyout == keyin   ||   
-                  (keyin-trak[it].keyout)%shm->keymax == 0 ) 
+             ir    = trak[it].keyout;
+             tmphd = (TPORT_HEAD *) &ring[ir];
+             if ( trak[it].keyout == keyin   ||
+                  (keyin-trak[it].keyout)%shm->keymax == 0 )
              {
 /*DEBUG*/       /*printf("tport_getmsg:  Intermed:  keyout=%10u  same as keyin\n",
                        trak[it].keyout );*/
                 trak[it].keyout = keyin;
              }
              else if( tmphd->start != FIRST_BYTE )
-             {  
+             {
 /*DEBUG*/       /*printf("tport_getmsg:  Intermed:  keyout=%10u  does not point to FIRST_BYTE\n",
                         trak[it].keyout );*/
                 trak[it].keyout = keyold;
              }
 
           /* else, make sure keyout's value is between keyold and keyin */
-             else if ( trak[it].keyout < keyold ) 
+             else if ( trak[it].keyout < keyold )
              {
                 do {
                     trak[it].keyout += shm->keymax;
@@ -755,13 +620,13 @@ findkey:
                      trak[it].keyout, keyold, keyin );*/
          }
       }
-    /*fprintf( stdout, 
+    /*fprintf( stdout,
           "NOTICE: tport_getmsg; keyin wrapped, keyout(s) reset; Region %ld\n",
            region->key );*/
 
       goto findkey;
    }
-     
+
 
 /**** Find next message from requested type, module, instid ****/
 
@@ -774,7 +639,7 @@ nextmsg:
 
    /* load next header; make sure you weren't lapped */
        ir = keyget % shm->keymax;
-       for ( ih=0 ; ih < sizeof(TPORT_HEAD) ; ih++ )    
+       for ( ih=0 ; ih < sizeof(TPORT_HEAD) ; ih++ )
        {
           if ( ir >= shm->keymax )  ir -= shm->keymax;
           h[ih] = ring[ir++];
@@ -782,9 +647,9 @@ nextmsg:
        if ( keyget < shm->keyold ) continue;  /*added 960612:ldd*/
 
    /* make sure it starts at beginning of a header */
-       if ( hd.start != FIRST_BYTE ) 
+       if ( hd.start != FIRST_BYTE )
        {
-          fprintf( stdout, 
+          fprintf( stdout,
                   "ERROR: tport_getmsg; keyget not at FIRST_BYTE, Region %ld\n",
                    region->key );
           exit( 1 );
@@ -792,41 +657,41 @@ nextmsg:
        keyget += sizeof(TPORT_HEAD) + hd.size;
 
    /* see if this msg matches any requested type */
-       for ( j=0 ; j < nget ; j++ )  
+       for ( j=0 ; j < nget ; j++ )
        {
           if((getlogo[j].type   == hd.logo.type   || getlogo[j].type == WILD) &&
              (getlogo[j].mod    == hd.logo.mod    || getlogo[j].mod  == WILD) &&
              (getlogo[j].instid == hd.logo.instid || getlogo[j].instid == WILD) )
           {
-   
-/**** Found a message of requested logo; retrieve it! ****/ 
-        /* complain if retreived msg is too big */      
-             if ( (msg != NULL) && (hd.size > maxsize) )  
+
+/**** Found a message of requested logo; retrieve it! ****/
+        /* complain if retreived msg is too big */
+             if ( !dont_copy && (hd.size > maxsize) )
              {
                *logo   = hd.logo;
                *length = hd.size;
-                status = GET_TOOBIG; 
+                status = GET_TOOBIG;
                 goto trackit;    /*changed 960612:ldd*/
              }
         /* copy message by chunks to caller's address */
              nwrap = ir + hd.size - shm->keymax;
              if ( nwrap <= 0 )
              {
-                if ( msg != NULL )
+                if ( !dont_copy )
                 	memcpy( (void *) msg, (void *) &ring[ir], hd.size );
              }
              else
              {
                 nfill = hd.size - nwrap;
-                if ( msg != NULL ) {
-	                memcpy( (void *) &msg[0],     (void *) &ring[ir], nfill );
-    	            memcpy( (void *) &msg[nfill], (void *) &ring[0],  nwrap );
-    	        }
+                if ( !dont_copy ) {
+					memcpy( (void *) &msg[0],     (void *) &ring[ir], nfill );
+					memcpy( (void *) &msg[nfill], (void *) &ring[0],  nwrap );
+				}
              }
         /* see if we got run over by tport_putmsg while copying msg */
         /* if we did, go back and try to get a msg cleanly          */
-             keyold = shm->keyold; 
-             if ( keyold >= keyget ) 
+             keyold = shm->keyold;
+             if ( keyold >= keyget )
              {
                 keyget = keyold;
                 goto nextmsg;
@@ -834,17 +699,18 @@ nextmsg:
 
         /* set other returned variables */
             *logo   = hd.logo;
-	        *length = hd.size;
+            if ( length != NULL )
+	            *length = hd.size;
 
 trackit:
         /* find msg logo in tracked list */
-             for ( it=0 ; it < nlogo ; it++ )  
+             for ( it=0 ; it < nlogo ; it++ )
              {
                 if ( region->key    != trak[it].memkey      )  continue;
                 if ( hd.logo.type   != trak[it].logo.type   )  continue;
                 if ( hd.logo.mod    != trak[it].logo.mod    )  continue;
                 if ( hd.logo.instid != trak[it].logo.instid )  continue;
-                /* activate sequence tracking if 1st msg */  
+                /* activate sequence tracking if 1st msg */
                 if ( !trak[it].active )
                 {
                     trak[it].seq    = hd.seq;
@@ -852,31 +718,31 @@ trackit:
                 }
                 goto sequence;
              }
-        /* new logo, track it if there's room */   
-             if ( nlogo == NTRACK_GET ) 
+        /* new logo, track it if there's room */
+             if ( nlogo == NTRACK_GET )
              {
-                fprintf( stdout, 
-                     "ERROR: tport_getmsg; exceeded NTRACK_GET\n"); 
+                fprintf( stdout,
+                     "ERROR: tport_getmsg; exceeded NTRACK_GET\n");
                 if( status != GET_TOOBIG ) status = GET_NOTRACK; /*changed 960612:ldd*/
                 goto wrapup;
              }
              it = nlogo;
              trak[it].memkey = region->key;
-             trak[it].logo   = hd.logo;  
+             trak[it].logo   = hd.logo;
              trak[it].seq    = hd.seq;
              trak[it].active = 1;      /*960618:ldd*/
-             nlogo++;         
+             nlogo++;
 
 sequence:
         /* check if sequence #'s match; update sequence # */
-             if ( status == GET_TOOBIG   )  goto wrapup; /*added 960612:ldd*/     
-             if ( hd.seq != trak[it].seq ) 
+             if ( status == GET_TOOBIG   )  goto wrapup; /*added 960612:ldd*/
+             if ( hd.seq != trak[it].seq )
              {
-                status = GET_MISS; 
+                status = GET_MISS;
                 trak[it].seq = hd.seq;
              }
              trak[it].seq++;
- 
+
         /* Ok, we're finished grabbing this one */
              goto wrapup;
 
@@ -905,7 +771,7 @@ wrapup:
        }
     }
 
-   return( status );     
+   return( status );
 
 }
 
@@ -920,12 +786,28 @@ int tport_flush( SHM_INFO  *region,   /* info structure for memory region  */
 		  MSG_LOGO  *logo )     /* logo of retrieved msg 	    */
 {
 	int res;
-	long length;
-	
+
 	do{
-		res = tport_getmsg( region, getlogo, nget, logo, &length, NULL, 0 );
+		res = tport_getmsg_base( region, getlogo, nget, logo, NULL, NULL, 0, 1 );
 	} while (res !=GET_NONE);
 	return res;
+}
+
+
+/*********************** function tport_getmsg ***********************/
+/*                 Get a message out of shared memory.               */
+/*********************************************************************/
+
+int tport_getmsg( SHM_INFO  *region,   /* info structure for memory region  */
+		  MSG_LOGO  *getlogo,  /* requested logo(s)                 */
+		  short      nget,     /* number of logos in getlogo        */
+		  MSG_LOGO  *logo,     /* logo of retrieved msg 	    */
+		  long      *length,   /* size of retrieved message         */
+		  char      *msg,      /* retrieved message                 */
+		  long       maxsize ) /* max length for retrieved message  */
+{
+	return tport_getmsg_base( region, getlogo, nget,
+		logo, length, msg, maxsize, 0 );
 }
 
 
@@ -938,52 +820,18 @@ static int tport_doFlagOp( SHM_INFO* region, int pid, int op )
 {
    int i;
    SHM_FLAG  *smf;
-   int start, stop;
+   int start=0, stop=0;
    int		 ret_val = 0;
-#ifndef _USE_POSIX_SHM
-   struct sembuf     sops;             /* semaphore operations; 
-                                             changed to non-static 980424:ldd */
-   int res;
-#ifdef _MACOSX
-   int triesLeft;
-#else
-    struct timespec timeout;
-#endif
-#endif
 
    if ( Flag_Init )
    	  tport_createFlag();
    smf = (SHM_FLAG*)smf_region.addr;
    if ( smf == NULL )
-   	  return 0;
+      return 0;
 
-#ifdef _USE_POSIX_SHM
-   if ( sem_wait(smf_region.sid) == -1 )
-      tport_syserr( "tport_doFlagOp sem_wait ->inuse", smf_region.key );
-#else
-   sops.sem_num = 0;
-   sops.sem_flg = 0;   
-   sops.sem_op = SHM_INUSE;
-#ifdef _MACOSX
-   triesLeft = FLAG_LOCK_TRIES;
-   while ( triesLeft > 0 && (res = semop( smf_region.sid, &sops, 1 )) == -1 ) {
-      if ( errno != EINTR )
-          break;
-      triesLeft--;      
-   }  
-#else
-    timeout.tv_sec = 2;
-    timeout.tv_nsec = 0;
-    res = semtimedop( smf_region.sid, &sops, 1, &timeout );
-    if (res==-1 && errno==EAGAIN) {
-        /* assume that process that acquired lock has died and proceed */
-        fprintf( stdout, "tport_doFlagOp semop/wait timed out; proceeding\n" );
-        res = 0;
-    }
-#endif 
-   if (res == -1)
-      tport_syserr( "tport_doFlagOp semop ->inuse", smf_region.key );
-#endif
+/**** Change semaphore; let others know you're using tracking structure & memory  ****/
+
+   WaitForSingleObject(smf_region.hMutex, INFINITE);
 
    switch ( op ) {
    case FF_REMOVE:
@@ -1082,7 +930,7 @@ static int tport_doFlagOp( SHM_INFO* region, int pid, int op )
 	break;
 
    case FF_GETFLAG:
-    if ( ret_val != TERMINATE ) {
+    if ( ret_val != TERMINATE )
 		if ( i >= stop ) {
 			stop = smf->nPids;
 			for ( ; i<stop; i++ )
@@ -1090,25 +938,15 @@ static int tport_doFlagOp( SHM_INFO* region, int pid, int op )
 					break;
 			/* If pid unknown, treat as an old-style module */
 			ret_val = ( i >= stop && region != NULL) ? (region->addr)->flag : 0;
-		} else {
+		} else
 			ret_val = ( i >= stop ) ? 0 : pid;
-		}
-	}
 	break;
 	
    case FF_CLASSIFY:
 	ret_val = ( i >= stop ) ? 0 : ( i >= smf->nPidsToDie ) ? 1 : 2;
    }
 
-#ifdef _USE_POSIX_SHM
-   if ( sem_post(smf_region.sid) == -1 )
-      tport_syserr( "tport_doFlagOp sem_post ->inuse", smf_region.key );
-#else
-   sops.sem_op = SHM_FREE;
-   res = semop( smf_region.sid, &sops, 1 );  
-   if (res == -1)
-      tport_syserr( "tport_doFlagOp semop ->free", smf_region.key ); 
-#endif
+   ReleaseMutex(smf_region.hMutex);
 
    return ret_val;
 }
@@ -1156,10 +994,7 @@ int tport_getflag( SHM_INFO *region )
       
 {
 	if ( smf_region.addr == NULL )
-		if ( region == NULL )
-			return 0;
-		else
-			return (region->addr)->flag;
+		return (region->addr)->flag;
 	else
 		return tport_doFlagOp( region, getpid(), FF_GETFLAG );
 }
@@ -1176,123 +1011,127 @@ int tport_newModule( int pid )
 }
 
 
-
 /************************** tport_bufthr ****************************/
 /*     Thread to buffer input from one transport ring to another.   */
 /********************************************************************/
-void *tport_bufthr( void *dummy )
+void tport_bufthr( void *dummy )
 {
-   char		 errnote[150];
+   char          errnote[150];
    MSG_LOGO      logo;
    long          msgsize;
    unsigned char msgseq;
    int           res1, res2;
-   int 		 gotmsg;
+   int           gotmsg;
+   HANDLE myHandle = GetCurrentThread();
+
+/* Reset my own thread priority
+   ****************************/
+   if ( SetThreadPriority( myHandle, THREAD_PRIORITY_TIME_CRITICAL ) == 0 )
+   {
+      printf( "Error setting buffer thread priority: %d\n", GetLastError() );
+      exit( -1 );
+   }
 
 /* Flush all existing messages from the public memory region
    *********************************************************/
-   while( tport_copyfrom((SHM_INFO *) PubRegion, (MSG_LOGO *) Getlogo, 
-                          Nget, &logo, &msgsize, (char *) Message, 
+   while( tport_copyfrom((SHM_INFO *) PubRegion, (MSG_LOGO *) Getlogo,
+                          Nget, &logo, &msgsize, (char *) Message,
                           MaxMsgSize, &msgseq )  !=  GET_NONE  );
 
    while ( 1 )
    {
-/* If a terminate flag is found, go to sleep; 
-   the main thread should cause the process to exit!
-   *************************************************/
-      if ( tport_getflag( (SHM_INFO *) PubRegion ) == TERMINATE )
+      Sleep( 500 );
+
+/* If a terminate flag is found, copy it to the private ring.
+   Then, terminate this thread.
+   *********************************************************/
+      if ( tport_getflag( (SHM_INFO *) PubRegion ) == TERMINATE ||
+           tport_getflag( (SHM_INFO *) BufRegion ) == TERMINATE   )
       {
          tport_putflag( (SHM_INFO *) BufRegion, TERMINATE );
-         sleep_ew( 100000 );
+         _endthread();
       }
 
-      do 
-      {
 /* Try to copy a message from the public memory region
    ***************************************************/
- 	  res1 = tport_copyfrom((SHM_INFO *) PubRegion, (MSG_LOGO *) Getlogo, 
-				Nget, &logo, &msgsize, (char *) Message, 
-			        MaxMsgSize, &msgseq );
-	  gotmsg = 1;
+      do
+      {
+          res1 = tport_copyfrom((SHM_INFO *) PubRegion, (MSG_LOGO *) Getlogo,
+                                Nget, &logo, &msgsize, (char *) Message,
+                                MaxMsgSize, &msgseq );
+          gotmsg = 1;
 
 /* Handle return values
    ********************/
-          switch ( res1 ) 
-	  {
+          switch ( res1 )
+          {
           case GET_MISS_LAPPED:
-		sprintf( errnote, 
-			"tport_bufthr: Missed msg(s)  c%d m%d t%d  Overwritten, region:%ld.",
-			 (int) logo.instid, (int) logo.mod, (int) logo.type,
-			 PubRegion->key );
-		tport_buferror( ERR_LAPPED, errnote );
-		break;
-	  case GET_MISS_SEQGAP:
-		sprintf( errnote, 
-			"tport_bufthr: Missed msg(s)  c%d m%d t%d  Sequence gap, region:%ld.",
-			 (int) logo.instid, (int) logo.mod, (int) logo.type,
-			 PubRegion->key );
-		tport_buferror( ERR_SEQGAP, errnote );
-		break;
+                sprintf( errnote,
+                        "tport_bufthr: Missed msg(s)  c%d m%d t%d  Overwritten, region:%ld.",
+                         (int) logo.instid, (int) logo.mod, (int) logo.type,
+                         PubRegion->key );
+                tport_buferror( ERR_LAPPED, errnote );
+                break;
+          case GET_MISS_SEQGAP:
+                sprintf( errnote,
+                        "tport_bufthr: Missed msg(s)  c%d m%d t%d  Sequence gap, region:%ld.",
+                         (int) logo.instid, (int) logo.mod, (int) logo.type,
+                         PubRegion->key );
+                tport_buferror( ERR_SEQGAP, errnote );
+                break;
           case GET_NOTRACK:
-		sprintf( errnote,
-			"tport_bufthr: Logo c%d m%d t%d not tracked; NTRACK_GET exceeded.", 
-			(int) logo.instid, (int) logo.mod, (int) logo.type );
-		tport_buferror( ERR_UNTRACKED, errnote );
+                sprintf( errnote,
+                        "tport_bufthr: Logo c%d m%d t%d not tracked; NTRACK_GET exceeded.",
+                        (int) logo.instid, (int) logo.mod, (int) logo.type );
+                tport_buferror( ERR_UNTRACKED, errnote );
           case GET_OK:
-		break;
+                break;
           case GET_TOOBIG:
-		sprintf( errnote, 
-			"tport_bufthr: msg[%ld] c%d m%d t%d seq%d too big; skipped in region:%ld.",
-			 msgsize, (int) logo.instid, (int) logo.mod, 
-		         (int) logo.type, (int) msgseq, PubRegion->key );
-		tport_buferror( ERR_OVERFLOW, errnote );
+                sprintf( errnote,
+                        "tport_bufthr: msg[%ld] c%d m%d t%d seq%d too big; skipped in region:%ld.",
+                         msgsize, (int) logo.instid, (int) logo.mod,
+                         (int) logo.type, (int) msgseq, PubRegion->key );
+                tport_buferror( ERR_OVERFLOW, errnote );
           case GET_NONE:
-		gotmsg = 0;
-		break;
+                gotmsg = 0;
+                break;
           }
 
 /* If you did get a message, copy it to private ring
-   *************************************************/  
-	  if ( gotmsg )  
-	  {        
-	        res2 = tport_copyto( (SHM_INFO *) BufRegion, &logo, 
-			             msgsize, (char *) Message, msgseq );
-		switch (res2) 
-		{
-		case PUT_TOOBIG:
-		   sprintf( errnote, 
-		       "tport_bufthr: msg[%ld] (c%d m%d t%d) too big for Region:%ld.",
-			msgsize, (int) logo.instid, (int) logo.mod, (int) logo.type,
-			BufRegion->key );
-		   tport_buferror( ERR_OVERFLOW, errnote );
-		case PUT_OK:
-		   break;
-		}
-	  }
-      } while ( res1 != GET_NONE ); 
-
-      sleep_ew( 500 );
-
+   *************************************************/
+          if ( gotmsg )
+          {
+              res2 = tport_copyto( (SHM_INFO *) BufRegion, &logo,
+                                   msgsize, (char *) Message, msgseq );
+              switch (res2)
+              {
+              case PUT_TOOBIG:
+                 sprintf( errnote,
+                     "tport_bufthr: msg[%ld] (c%d m%d t%d) too big for Region:%ld.",
+                      msgsize, (int) logo.instid, (int) logo.mod, (int) logo.type,
+                      BufRegion->key );
+                 tport_buferror( ERR_OVERFLOW, errnote );
+              case PUT_OK:
+                 break;
+              }
+          }
+      } while ( res1 != GET_NONE );
    }
 }
- 
- 
+
+
 /************************** tport_buffer ****************************/
 /*       Function to initialize the input buffering thread          */
 /********************************************************************/
-int tport_buffer( SHM_INFO  *region1,      /* transport ring	         */
-		  SHM_INFO  *region2,      /* private ring 	         */
-		  MSG_LOGO  *getlogo,      /* array of logos to copy 	 */
-		  short      nget,         /* number of logos in getlogo */
-		  unsigned   maxMsgSize,   /* size of message buffer 	 */
-		  unsigned char module,	   /* module id of main thread   */
-		  unsigned char instid )   /* instid id of main thread   */
+int tport_buffer( SHM_INFO  *region1,      /* transport ring             */
+                  SHM_INFO  *region2,      /* private ring               */
+                  MSG_LOGO  *getlogo,      /* array of logos to copy     */
+                  short      nget,         /* number of logos in getlogo */
+                  unsigned   maxMsgSize,   /* size of message buffer     */
+                  unsigned char module,    /* module id of main thread   */
+                  unsigned char instid )   /* instid id of main thread   */
 {
-   int error;
-#ifdef _USE_PTHREADS
-   pthread_t thr;
-   pthread_attr_t attr;
-#endif
+   uintptr_t thread_id;                /* Thread id of the buffer thread */
 
 /* Allocate message buffer
    ***********************/
@@ -1300,7 +1139,7 @@ int tport_buffer( SHM_INFO  *region1,      /* transport ring	         */
    if ( Message == NULL )
    {
       fprintf( stdout, "tport_buffer: Error allocating message buffer\n" );
-      return( -1 );
+      return -1;
    }
 
 /* Copy function arguments to global variables
@@ -1315,81 +1154,40 @@ int tport_buffer( SHM_INFO  *region1,      /* transport ring	         */
 
 /* Lookup message type for error messages
    **************************************/
-   if ( GetType( "TYPE_ERROR", &TypeError ) != 0 ) {
-      fprintf( stderr, 
+   if ( GetType( "TYPE_ERROR", &TypeError ) != 0 )
+   {
+      fprintf( stderr,
               "tport_buffer: Invalid message type <TYPE_ERROR>\n" );
-      return( -1 );
+      return -1;
    }
 
 /* Start the input buffer thread
    *****************************/
-#ifdef _USE_PTHREADS
-   if ( (error = pthread_attr_init(&attr)) != 0 ) {
-	fprintf(stderr,"tport_buffer: pthread_attr_init error: %s\n",strerror(error));
-	return (-1);
-   }
-   if ( (error = pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED)) != 0 ) {
-	fprintf(stderr,"tport_buffer: pthread_attr_setdetachstate error: %s\n",strerror(error));
-	return (-1);
-   }
-   if ( (error = pthread_create( &thr, &attr, tport_bufthr, (void *)NULL )) != 0 )
-   {
-      fprintf( stderr, "tport_buffer: pthread_create error: %s\n", strerror(error));
-      return( -1 );
-   }
-#else
-   /* Solaris defaults: 1MB stacksize, inherit parent's priority */
-   if ( thr_create( NULL, NULL, tport_bufthr, NULL, THR_DETACHED,
-                    NULL ) != 0 )
-   {
-      fprintf( stderr, "tport_buffer: thr_create error: %s\n", strerror(error));
-      return( -1 );
-   }
-#endif
+   thread_id = _beginthread( tport_bufthr, 0, NULL );
 
-/* Yield to the buffer thread
-   **************************/
-#ifdef _USE_PTHREADS
-  /* under POSIX.1c there is supposed to be a pthread_yield().  Additionally, the
-     POSIX.1b sched_yield() function is amended to refer to the calling thread, as
-     opposed to the calling process.  Some vendors didn't implement pthread_yield();
-     for those cases redefine pthread_yield as sched_yield.  Old Solaris systems didn't
-     implement either; for those cases redefine pthread_yield as thr_yield */
-# ifdef __sgi
-#  include <sched.h>
-#  define pthread_yield sched_yield
-# endif
-# ifdef _UNIX
-#  include <sched.h>
-#  define pthread_yield sched_yield
-# endif
-# ifdef OLD_SOLARIS	/* Replace with appropriate system-defined symbol */
-#  include <thread.h>
-#  define pthread_yield thr_yield
-# endif
-   pthread_yield();
-#else
-   thr_yield();
-#endif
-
-   return( 0 );
+   if ( thread_id == -1 )                /* Couldn't create thread */
+   {
+      fprintf( stderr, "tport_buffer: Can't start the buffer thread." );
+      return -1;
+   }
+   return 0;
 }
 
 
 /********************** function tport_copyfrom *********************/
-/*      get a message out of public shared memory; save the 	    */
+/*      get a message out of public shared memory; save the         */
 /*     sequence number from the transport layer, with the intent    */
 /*       of copying it to a private (buffering) memory ring         */
 /********************************************************************/
 
 int tport_copyfrom( SHM_INFO  *region,   /* info structure for memory region */
-		    MSG_LOGO  *getlogo,  /* requested logo(s)                */
-		    short      nget,     /* number of logos in getlogo       */
-		    MSG_LOGO  *logo,     /* logo of retrieved message 	     */
-		    long      *length,   /* size of retrieved message        */
-		    char      *msg,      /* retrieved message                */
-		    long       maxsize,  /* max length for retrieved message */
-		    unsigned char *seq ) /* TPORT_HEAD seq# of retrieved msg */
+                    MSG_LOGO  *getlogo,  /* requested logo(s)                */
+                    short      nget,     /* number of logos in getlogo       */
+                    MSG_LOGO  *logo,     /* logo of retrieved message        */
+                    long      *length,   /* size of retrieved message        */
+                    char      *msg,      /* retrieved message                */
+                    long       maxsize,  /* max length for retrieved message */
+                    unsigned char *seq ) /* TPORT_HEAD seq# of retrieved msg */
 {
    static MSG_TRACK  trak[NTRACK_GET]; /* sequence #, outpointer keeper     */
    static int        nlogo;            /* # modid,type,instid combos so far */
@@ -1397,7 +1195,7 @@ int tport_copyfrom( SHM_INFO  *region,   /* info structure for memory region */
    SHM_HEAD         *shm;              /* pointer to start of memory region */
    char             *ring;             /* pointer to ring part of memory    */
    TPORT_HEAD       *tmphd;            /* temp pointer into shared memory   */
-   long              ir;               /* index into the ring               */
+   unsigned long     ir;               /* index into the ring               */
    long              nfill;            /* bytes from ir to ring's last-byte */
    long              nwrap;            /* bytes to grab from front of ring  */
    TPORT_HEAD        hd;               /* transport header from memory      */
@@ -1408,7 +1206,7 @@ int tport_copyfrom( SHM_INFO  *region,   /* info structure for memory region */
    unsigned long     keyget;           /* pointer at which to start search  */
    int               status = GET_OK;  /* how did retrieval go?             */
    int               lapped = 0;       /* = 1 if memory ring has been over- */
- 				       /* written since last tport_copyfrom */
+                                       /* written since last tport_copyfrom */
    int               trakked;          /* flag for trakking list entries    */
    int               i,j;
 
@@ -1422,7 +1220,7 @@ int tport_copyfrom( SHM_INFO  *region,   /* info structure for memory region */
 
    if (Copyfrom_Init)
    {
-       nlogo = 0;  
+       nlogo = 0;
 
        for( i=0 ; i < NTRACK_GET ; i++ )
        {
@@ -1431,7 +1229,7 @@ int tport_copyfrom( SHM_INFO  *region,   /* info structure for memory region */
           trak[i].logo.mod    = 0;
           trak[i].logo.instid = 0;
           trak[i].seq         = 0;
-          trak[i].keyout      = 0; 
+          trak[i].keyout      = 0;
           trak[i].active      = 0; /*960618:ldd*/
        }
        Copyfrom_Init = 0;
@@ -1451,15 +1249,15 @@ int tport_copyfrom( SHM_INFO  *region,   /* info structure for memory region */
           trakked = 1;  /* found it in the trakking list! */
           break;
        }
-       if( trakked ) continue;  
+       if( trakked ) continue;
     /* Make an entry in trak for this logo; if there's room */
-       if ( nlogo < NTRACK_GET ) 
+       if ( nlogo < NTRACK_GET )
        {
           it = nlogo;
           trak[it].memkey = region->key;
-          trak[it].logo   = getlogo[j];  
-          nlogo++;  
-       }       
+          trak[it].logo   = getlogo[j];
+          nlogo++;
+       }
    }
 
 /**** find latest starting index to look for any of the requested logos ****/
@@ -1485,7 +1283,7 @@ findkey:
 /**** make sure you haven't been lapped by tport_copyto or tport_putmsg ****/
    if ( keyget < shm->keyold ) {
       keyget = shm->keyold;
-      lapped = 1;   
+      lapped = 1;
    }
 
 /**** See if keyin and keyold were wrapped and reset by tport_putmsg; ****/
@@ -1494,10 +1292,10 @@ findkey:
    keyin = shm->keyin;
    if ( keyget > keyin )
    {
-      keyold = shm->keyold;  
-      for ( it=0 ; it < nlogo ; it++ )  
+      keyold = shm->keyold;
+      for ( it=0 ; it < nlogo ; it++ )
       {
-         if( trak[it].memkey == region->key ) 
+         if( trak[it].memkey == region->key )
          {
           /* reset keyout */
 /*DEBUG*/    /*printf("tport_copyfrom: Pre-reset:  keyout=%10u    keyold=%10u  keyin=%10u\n",
@@ -1508,26 +1306,26 @@ findkey:
 
           /* make sure new keyout points to keyin or to a msg's first-byte; */
           /* if not, we've been lapped, so set keyout to keyold             */
-             ir    = trak[it].keyout; 
-             tmphd = (TPORT_HEAD *) &ring[ir];  
-             if ( trak[it].keyout == keyin   ||   
-                  (keyin-trak[it].keyout)%shm->keymax == 0 ) 
+             ir    = trak[it].keyout;
+             tmphd = (TPORT_HEAD *) &ring[ir];
+             if ( trak[it].keyout == keyin   ||
+                  (keyin-trak[it].keyout)%shm->keymax == 0 )
              {
 /*DEBUG*/       /*printf("tport_copyfrom:  Intermed:  keyout=%10u  same as keyin\n",
                         trak[it].keyout );*/
                 trak[it].keyout = keyin;
              }
              else if( tmphd->start != FIRST_BYTE )
-             {  
+             {
 /*DEBUG*/       /*printf("tport_copyfrom:  Intermed:  keyout=%10u  does not point to FIRST_BYTE\n",
                         trak[it].keyout );*/
                 trak[it].keyout = keyold;
-                lapped = 1;   
+                lapped = 1;
              }
 
           /* else, make sure keyout's value is between keyold and keyin */
-             else if ( trak[it].keyout < keyold ) 
-             { 
+             else if ( trak[it].keyout < keyold )
+             {
                 do {
                     trak[it].keyout += shm->keymax;
                 } while ( trak[it].keyout < keyold );
@@ -1536,13 +1334,13 @@ findkey:
                      trak[it].keyout, keyold, keyin );*/
          }
       }
-    /*fprintf( stdout, 
+    /*fprintf( stdout,
           "NOTICE: tport_copyfrom; keyin wrapped, keyout(s) reset; Region %ld\n",
            region->key );*/
 
       goto findkey;
    }
-     
+
 
 /**** Find next message from requested type, module, instid ****/
 
@@ -1552,13 +1350,13 @@ nextmsg:
    {
    /* make sure you haven't been lapped by tport_copyto or tport_putmsg */
        if ( keyget < shm->keyold ) {
-	  keyget = shm->keyold;
+          keyget = shm->keyold;
           lapped = 1;
        }
 
    /* load next header; make sure you weren't lapped */
        ir = keyget % shm->keymax;
-       for ( ih=0 ; ih < sizeof(TPORT_HEAD) ; ih++ )    
+       for ( ih=0 ; ih < sizeof(TPORT_HEAD) ; ih++ )
        {
           if ( ir >= shm->keymax )  ir -= shm->keymax;
           h[ih] = ring[ir++];
@@ -1566,9 +1364,9 @@ nextmsg:
        if ( keyget < shm->keyold ) continue;  /*added 960612:ldd*/
 
    /* make sure it starts at beginning of a header */
-       if ( hd.start != FIRST_BYTE ) 
+       if ( hd.start != FIRST_BYTE )
        {
-          fprintf( stdout, 
+          fprintf( stdout,
                   "ERROR: tport_copyfrom; keyget not at FIRST_BYTE, Region %ld\n",
                    region->key );
           exit( 1 );
@@ -1576,21 +1374,21 @@ nextmsg:
        keyget += sizeof(TPORT_HEAD) + hd.size;
 
    /* see if this msg matches any requested type */
-       for ( j=0 ; j < nget ; j++ )  
+       for ( j=0 ; j < nget ; j++ )
        {
           if((getlogo[j].type   == hd.logo.type   || getlogo[j].type == WILD) &&
              (getlogo[j].mod    == hd.logo.mod    || getlogo[j].mod  == WILD) &&
              (getlogo[j].instid == hd.logo.instid || getlogo[j].instid == WILD) )
           {
-   
-/**** Found a message of requested logo; retrieve it! ****/ 
-        /* complain if retreived msg is too big */      
-             if ( hd.size > maxsize )  
+
+/**** Found a message of requested logo; retrieve it! ****/
+        /* complain if retreived msg is too big */
+             if ( hd.size > maxsize )
              {
                *logo   = hd.logo;
                *length = hd.size;
-	       *seq    = hd.seq;
-                status = GET_TOOBIG; 
+               *seq    = hd.seq;
+                status = GET_TOOBIG;
                 goto trackit;    /*changed 960612:ldd*/
              }
         /* copy message by chunks to caller's address */
@@ -1607,11 +1405,11 @@ nextmsg:
              }
         /* see if we got lapped by tport_copyto or tport_putmsg while copying msg */
         /* if we did, go back and try to get a msg cleanly          */
-             keyold = shm->keyold; 
-             if ( keyold >= keyget ) 
+             keyold = shm->keyold;
+             if ( keyold >= keyget )
              {
                 keyget = keyold;
-		lapped = 1; 
+                lapped = 1;
                 goto nextmsg;
              }
 
@@ -1622,13 +1420,13 @@ nextmsg:
 
 trackit:
         /* find logo in tracked list */
-             for ( it=0 ; it < nlogo ; it++ )  
+             for ( it=0 ; it < nlogo ; it++ )
              {
                 if ( region->key    != trak[it].memkey      )  continue;
                 if ( hd.logo.type   != trak[it].logo.type   )  continue;
                 if ( hd.logo.mod    != trak[it].logo.mod    )  continue;
                 if ( hd.logo.instid != trak[it].logo.instid )  continue;
-                /* activate sequence tracking if 1st msg */  
+                /* activate sequence tracking if 1st msg */
                 if ( !trak[it].active )
                 {
                     trak[it].seq    = hd.seq;
@@ -1636,32 +1434,32 @@ trackit:
                 }
                 goto sequence;
              }
-        /* new logo, track it if there's room */   
-             if ( nlogo == NTRACK_GET ) 
+        /* new logo, track it if there's room */
+             if ( nlogo == NTRACK_GET )
              {
-                fprintf( stdout, 
-                     "ERROR: tport_copyfrom; exceeded NTRACK_GET\n"); 
+                fprintf( stdout,
+                     "ERROR: tport_copyfrom; exceeded NTRACK_GET\n");
                 if( status != GET_TOOBIG ) status = GET_NOTRACK; /*changed 960612:ldd*/
                 goto wrapup;
              }
              it = nlogo;
              trak[it].memkey = region->key;
-             trak[it].logo   = hd.logo;  
+             trak[it].logo   = hd.logo;
              trak[it].seq    = hd.seq;
              trak[it].active = 1;      /*960618:ldd*/
-             nlogo++; 
-            
+             nlogo++;
+
 sequence:
         /* check if sequence #'s match; update sequence # */
-             if ( status == GET_TOOBIG   )  goto wrapup; /*added 960612:ldd*/     
-             if ( hd.seq != trak[it].seq ) 
+             if ( status == GET_TOOBIG   )  goto wrapup; /*added 960612:ldd*/
+             if ( hd.seq != trak[it].seq )
              {
-       		if (lapped)  status = GET_MISS_LAPPED;
-                else         status = GET_MISS_SEQGAP; 
+                if (lapped)  status = GET_MISS_LAPPED;
+                else         status = GET_MISS_SEQGAP;
                 trak[it].seq = hd.seq;
              }
              trak[it].seq++;
- 
+
         /* Ok, we're finished grabbing this one */
              goto wrapup;
 
@@ -1690,39 +1488,41 @@ wrapup:
        }
     }
 
-   return( status );     
+   return( status );
 
 }
 
 
 /*********************** function tport_copyto ***********************/
-/*           Puts a message into a shared memory region. 	     */
+/*           Puts a message into a shared memory region.             */
 /*    Preserves the sequence number (passed as argument) as the      */
 /*                transport layer sequence number                    */
 /*********************************************************************/
 
-int tport_copyto( SHM_INFO    *region,  /* info structure for memory region   */
-		  MSG_LOGO    *putlogo, /* type,module,instid of incoming msg */
-		  long         length,  /* size of incoming message           */
-		  char        *msg,     /* pointer to incoming message        */
-		  unsigned char seq )   /* preserve as sequence# in TPORT_HEAD*/
+int tport_copyto( SHM_INFO    *region,  /* info structure for memory region     */
+                  MSG_LOGO    *putlogo, /* type, module, instid of incoming msg */
+                  long         length,  /* size of incoming message             */
+                  char        *msg,     /* pointer to incoming message          */
+                  unsigned char seq )   /* preserve as sequence# in TPORT_HEAD  */
 {
-#ifndef _USE_POSIX_SHM
-   struct sembuf     sops;             /* semaphore operations; 
-                                             changed to non-static 980424:ldd */
-   int res;
-#endif
    SHM_HEAD         *shm;              /* pointer to start of memory region   */
    char             *ring;             /* pointer to ring part of memory      */
-   long              ir;               /* index into memory ring              */
+   unsigned long     ir;               /* index into memory ring              */
    long              nfill;            /* # bytes from ir to ring's last-byte */
    long              nwrap;            /* # bytes to wrap to front of ring    */
    TPORT_HEAD        hd;               /* transport layer header to put       */
    char             *h;                /* pointer to transport layer header   */
    TPORT_HEAD        old;              /* transport header of oldest msg      */
    char             *o;                /* pointer to oldest transport header  */
-   int              j;
-   int              triesLeft;
+   int j;
+   int retval = PUT_OK;                /* return value for this function      */
+
+/**** First time around, initialize semaphore controls ****/
+
+   if (Copyto_Init)
+   {
+       Copyto_Init  = 0;
+   }
 
 /**** Set up pointers for shared memory, etc. ****/
 
@@ -1735,38 +1535,22 @@ int tport_copyto( SHM_INFO    *region,  /* info structure for memory region   */
 
    if ( length + sizeof(TPORT_HEAD) > shm->keymax )
    {
-      fprintf( stdout, 
+      fprintf( stdout,
               "ERROR: tport_copyto; message too large (%ld) for Region %ld\n",
                length, region->key);
-      return( PUT_TOOBIG ); 
+      return( PUT_TOOBIG );
    }
-   
+
+/**** Change semaphore to let others know you're using memory ****/
+
+   WaitForSingleObject( region->hMutex, INFINITE );
+
 /**** Store everything you need in the transport header ****/
 
    hd.start = FIRST_BYTE;
    hd.size  = length;
    hd.logo  = *putlogo;
    hd.seq   = seq;
-
-/**** Change semaphore to let others know you're using memory ****/
-
-#ifdef _USE_POSIX_SHM
-   if ( sem_wait(region->sid) == -1 )
-      tport_syserr( "tport_copyto sem_wait ->inuse", region->key );
-#else
-   sops.sem_num = 0;
-   sops.sem_flg = 0;   
-   sops.sem_op = SHM_INUSE;
-   triesLeft = RING_LOCK_TRIES;
-   while ( triesLeft > 0 && (res = semop( region->sid, &sops, 1 )) == -1 ) {   
-      if ( errno != EINTR )
-          break;
-      triesLeft--;
-   }   
-   if (res == -1)
-      tport_syserr( "tport_copyto semop ->inuse", region->key );
-#endif
-             
 
 /**** First see if keyin will wrap; if so, reset both keyin and keyold ****/
 
@@ -1775,7 +1559,7 @@ int tport_copyto( SHM_INFO    *region,  /* info structure for memory region   */
        shm->keyin  = shm->keyin  % shm->keymax;
        shm->keyold = shm->keyold % shm->keymax;
        if ( shm->keyin <= shm->keyold ) shm->keyin += shm->keymax;
-     /*fprintf( stdout, 
+     /*fprintf( stdout,
                "NOTICE: tport_copyto; keyin wrapped & reset; Region %ld\n",
                 region->key );*/
    }
@@ -1788,16 +1572,17 @@ int tport_copyto( SHM_INFO    *region,  /* info structure for memory region   */
       ir = shm->keyold % shm->keymax;
       if ( ring[ir] != FIRST_BYTE )
       {
-          fprintf( stdout, 
+          fprintf( stdout,
                   "ERROR: tport_copyto; keyold not at FIRST_BYTE, Region %ld\n",
                    region->key );
-          exit( 1 );
+          retval = TPORT_FATAL;
+          goto release_semaphore;
       }
       for ( j=0 ; j < sizeof(TPORT_HEAD) ; j++ )
       {
          if ( ir >= shm->keymax )   ir -= shm->keymax;
          o[j] = ring[ir++];
-      } 
+      }
       shm->keyold += sizeof(TPORT_HEAD) + old.size;
    }
 
@@ -1835,45 +1620,39 @@ int tport_copyto( SHM_INFO    *region,  /* info structure for memory region   */
 
 /**** Finished with shared memory, let others know via semaphore ****/
 
-#ifdef _USE_POSIX_SHM
-   if ( sem_post(region->sid) == -1 )
-      tport_syserr( "tport_copyto sem_post ->inuse", region->key );
-#else
-   sops.sem_op = SHM_FREE;
-   res = semop( region->sid, &sops, 1 );  
-   if (res == -1)
-      tport_syserr( "tport_copyto semop ->free", region->key ); 
-#endif
+release_semaphore:
+   ReleaseMutex(region->hMutex);
 
-   return( PUT_OK ); 
+   if( retval == TPORT_FATAL ) exit( 1 );
+   return( retval );
 }
 
 
 /************************* tport_buferror ***************************/
 /*  Build an error message and put it in the public memory region   */
 /********************************************************************/
-void tport_buferror( short  ierr, 	/* 2-byte error word       */
-		     char  *note  )	/* string describing error */
+void tport_buferror( short  ierr,       /* 2-byte error word       */
+                     char  *note  )     /* string describing error */
 {
-	MSG_LOGO    logo;
-	char	    msg[256];
-	long	    size;
-	time_t	    t;
-     
-	logo.instid = MyInstid;
+        MSG_LOGO    logo;
+        char        msg[256];
+        long        size;
+        time_t      t;
+
+        logo.instid = MyInstid;
         logo.mod    = MyModuleId;
         logo.type   = TypeError;
 
         time( &t );
-	sprintf( msg, "%ld %hd %s\n", t, ierr, note );
-	size = strlen( msg );   /* don't include the null byte in the message */
+        sprintf( msg, "%ld %hd %s\n", (long) t, ierr, note );
+        size = (long)strlen( msg );   /* don't include the null byte in the message */
 
- 	if ( tport_putmsg( (SHM_INFO *) PubRegion, &logo, size, msg ) != PUT_OK )
-	{
-	    printf("tport_bufthr:  Error sending error:%hd for module:%d.\n", 
-		    ierr, MyModuleId );
-	}     
-	return;
+        if ( tport_putmsg( (SHM_INFO *) PubRegion, &logo, size, msg ) != PUT_OK )
+        {
+            printf("tport_bufthr:  Error sending error:%hd for module:%d.\n",
+                    ierr, MyModuleId );
+        }
+        return;
 }
 
 
@@ -1882,29 +1661,20 @@ void tport_buferror( short  ierr, 	/* 2-byte error word       */
 /*********************************************************************/
 
 void tport_syserr( char *msg,   /* message to print (which routine had an error) */
-		   long  key )  /* identifies which memory region had the error  */
+                   long  key )  /* identifies which memory region had the error  */
 {
-#if defined(_LINUX)  || defined(_SOLARIS)
    extern int   sys_nerr;
-   extern const char *const sys_errlist[];
-#elif defined(_MACOSX)
-   extern int const sys_nerr;
-   extern const char *const sys_errlist[];
-#else
-   extern  char *sys_errlist[];
-#endif
+/*   extern char *sys_errlist[];*/
 
-   fprintf( stdout, "ERROR: %s (%d", msg, errno);
+   long err = GetLastError();   /* Override with per thread err */
 
-#ifdef _UNIX
-   if ( errno > 0 )
-      fprintf( stdout,"; %s) Region: %ld\n", strerror(errno), key );
-#else
-   if ( errno > 0 && errno < sys_nerr )
-      fprintf( stdout,"; %s) Region: %ld\n", sys_errlist[errno], key );
-#endif
+   fprintf( stdout, "ERROR (tport_ calls): %s (%d", msg, err );
+   fprintf( stdout, "; %s) Region: %ld\n", strerror(err), key);
+
+/*   if ( err > 0 && err < sys_nerr )
+      fprintf( stdout,"; %s) Region: %ld\n", sys_errlist[err], key );
    else
-      fprintf( stdout, ") Region: %ld\n", key );
+      fprintf( stdout, ") Region: %ld\n", key ); */
 
    exit( 1 );
 }
@@ -1923,7 +1693,7 @@ void tport_createFlag()
    		return;
    
    shm_flag_key = GetKeyWithDefault( SHM_FLAG_RING, SHM_FLAG_DEFAULT_KEY );
-
+   
    tport_create( &smf_region, sizeof(SHM_FLAG), shm_flag_key );
    
    faddr = (SHM_FLAG *)smf_region.addr;

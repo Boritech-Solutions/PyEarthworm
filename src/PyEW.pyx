@@ -18,7 +18,7 @@
 # distutils: sources = src/transport.c src/sleep_ew.c src/getutil.c src/kom.c src/logit.c src/time_ew.c
 # distutils: include_dirs = inc/
     
-import os, time, threading, logging
+import os, sys, time, threading, logging
 from libc.string cimport memcpy, memset, strncpy
 import numpy as np
 import struct
@@ -275,8 +275,8 @@ cdef class EWModule:
       for ring in self.ringcom:
         ring.detach()
       time.sleep(self.hb - 1)
-      logger.info("Module graceful Shutdown")
-      quit()
+      logger.info("Module Graceful Shutdown")
+      sys.exit()
   
   def mod_sta(self):
     return self.OK

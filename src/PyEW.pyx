@@ -188,10 +188,11 @@ class stopThread(threading.Thread):
       if inp != (0,0):
         pid = inp[1][:inp[0]].decode('UTF-8')
         if str(os.getpid()) in str(pid):
+          logger.info("Stop message for instance found.")
           self.temp.detach()
           self.funct()
         else:
-          logger.info("Not my pid")
+          logger.info("Stop message but, not my pid")
     logger.info("Stop thread successfully ended")
     
   def stop(self):
@@ -216,10 +217,11 @@ class restartThread(threading.Thread):
       if inp != (0,0):
         pid = inp[1][:inp[0]].decode('UTF-8')
         if str(os.getpid()) in str(pid):
+          logger.info("Restart message for instance found.")
           self.temp.detach()
           self.funct()
         else:
-          logger.info("Not my pid")
+          logger.info("Restart message, but not my pid")
     logger.info("Restart thread successfully ended")
     
   def stop(self):
@@ -273,7 +275,7 @@ cdef class EWModule:
       for ring in self.ringcom:
         ring.detach()
       time.sleep(self.hb - 1)
-      logger.info("Graceful Shutdown")
+      logger.info("Module Graceful Shutdown")
       sys.exit()
   
   def mod_sta(self):
@@ -288,14 +290,14 @@ cdef class EWModule:
   
   def add_ring(self, ring_id):
     if self.OK:
-      logger.info("Add ring to array")
+      logger.info("Add ring (%i) to ring array", ring_id)
       temp = transport(ring_id, self.my_modid, self.my_instid)
       temp.flush()
       self.ringcom.append(temp)
   
   def get_bytes(self, buf_ring, msg_type):
     if self.debug:
-      logger.debug("Get msg from array")
+      logger.info("Get msg from array")
     if buf_ring < len(self.ringcom) and self.OK:
       status = ''
       msg = self.ringcom[buf_ring].copymsg_type(msg_type)
@@ -316,7 +318,7 @@ cdef class EWModule:
       if msg != (0,0):
         if self.debug:
           status = msg[2][:msg[1]].decode('UTF-8')
-          logger.info(status)
+          logger.debug(status)
           print status
       return status
     return ''

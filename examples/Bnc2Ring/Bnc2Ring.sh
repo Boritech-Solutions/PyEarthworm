@@ -10,9 +10,9 @@ import time
 import datetime
 
 # Declare the station to be processed: PRSN - Puerto Rico Seismic Network and its ECEF XYZ position
-STA_X=2353900.1799
-STA_Y=-5584618.6433
-STA_Z=1981221.1234
+STA_X=4231162.4157
+STA_Y=-332746.4347
+STA_Z=4745131.0632
 #
 
 def readlines(sock, recv_buffer=4096, delim='\n'):
@@ -20,11 +20,11 @@ def readlines(sock, recv_buffer=4096, delim='\n'):
   data = True
   while data:
     data = sock.recv(recv_buffer)
-    buffer += data
+    buffer += str(data, 'utf-8')
     if quitting:
       Mod.goodbye()
       break
-    while buffer.find(delim) != -1:
+    while buffer.find('\n') != -1:
       line, buffer = buffer.split('\n', 1)
       yield line
   return
@@ -51,7 +51,7 @@ quitting = False
 def main():
   parser = argparse.ArgumentParser(description='This is a BNC NMEA message parser')
   parser.add_argument('-i', action="store", dest="IP",   default="localhost",   type=str)
-  parser.add_argument('-p', action="store", dest="PORT", default=4000,          type=int)
+  parser.add_argument('-p', action="store", dest="PORT", default=8000,          type=int)
   parser.add_argument('-r', action="store", dest="RING", default=1000,          type=int)
   parser.add_argument('-m', action="store", dest="MODID",default=8,             type=int)
   
@@ -63,8 +63,8 @@ def main():
    
   # Connect to EW
   Mod = PyEW.EWModule(results.RING, results.MODID, 141, 30.0, False)
-  Station = 'PRSN'
-  Network = 'PR'
+  Station = 'FGPS'
+  Network = 'FR'
   
   # Remember dtype must be int32
   dt = np.dtype(np.int32)
@@ -77,7 +77,7 @@ def main():
     if quitting:
       Mod.goodbye()
       break
-    
+      
     # Read NMEA msg:
     if "GPGGA" in line:
       msg = pynmea2.parse(line)

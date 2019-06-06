@@ -30,6 +30,7 @@ We can test this works by importing into python:
 
 ## Usage:
 
+A Jupyter notebook workshop can be found [here](https://github.com/Fran89/PyEarthworm_Workshop).
 The main class for communication with earthworm is PyEW.EWModule. It is a class that takes care of most of what a module should do, and it is described as follows:
 
 #### PyEW.EWModule:

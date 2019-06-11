@@ -25,5 +25,6 @@ cdef extern from "inc/transport.h":
   void  tport_detach( SHM_INFO * );
   int   tport_putmsg( SHM_INFO *, MSG_LOGO *, long, char * );
   int   tport_getmsg( SHM_INFO *, MSG_LOGO *, short, MSG_LOGO *, long *, char *, long );
-  int  tport_getflag( SHM_INFO *)
+  int  tport_getflag( SHM_INFO *);
+  int tport_copyto  ( SHM_INFO *, MSG_LOGO *, long , char *, unsigned char);
   int tport_copyfrom( SHM_INFO *, MSG_LOGO *, short, MSG_LOGO *, long *, char *, long, unsigned char *);

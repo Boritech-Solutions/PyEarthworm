@@ -19,10 +19,12 @@ cdef extern from "inc/transport.h":
   cdef int GET_TOOBIG
   cdef int GET_MISS_LAPPED
   cdef int GET_MISS_SEQGAP
+  cdef int TERMINATE
   
   void  tport_attach( SHM_INFO *, long );
   void  tport_detach( SHM_INFO * );
   int   tport_putmsg( SHM_INFO *, MSG_LOGO *, long, char * );
   int   tport_getmsg( SHM_INFO *, MSG_LOGO *, short, MSG_LOGO *, long *, char *, long );
+  int  tport_getflag( SHM_INFO *)
   int tport_copyfrom( SHM_INFO *, MSG_LOGO *, short, MSG_LOGO *, long *, char *, long, unsigned char *);
   

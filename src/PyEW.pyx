@@ -325,9 +325,9 @@ cdef class EWModule:
   
   def add_ring(self, ring_id):
     if self.OK:
-      logger.info("Add ring (%i) to ring array", ring_id)
       temp = transport(ring_id, self.my_modid, self.my_instid)
       temp.flush()
+      logger.info("Adding ring (%i) to ring array at index (%i)", ring_id, len(self.ringcom))
       self.ringcom.append(temp)
   
   def get_bytes(self, buf_ring, msg_type):

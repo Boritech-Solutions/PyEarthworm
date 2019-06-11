@@ -99,6 +99,10 @@ cdef class transport:
       status = ctransport.tport_getmsg(self.myring.get_buffer(), &reqmsg, 1, &resp, &rlen, msg, 4096)
       if status == ctransport.GET_NONE:
         break
+  
+  def getflag(self):
+    flag = ctransport.tport_getflag(self.myring.get_buffer())
+    return flag
     
   def putmsg(self, mtype, msg, size):
     cdef ctransport.MSG_LOGO msglogo
@@ -184,7 +188,12 @@ class stopThread(threading.Thread):
     self.temp.flush()
     while self.runs:
       time.sleep(0.1)
+      flag = self.temp.getflag()
       inp = self.temp.getmsg_type(113)
+      if flag == ctransport.TERMINATE:
+        logger.info("Terminate flag has been received")
+        self.temp.detach()
+        self.funct()
       if inp != (0,0):
         pid = inp[1][:inp[0]].decode('UTF-8')
         if str(os.getpid()) in str(pid):

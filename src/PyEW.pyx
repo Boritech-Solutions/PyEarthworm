@@ -111,7 +111,17 @@ cdef class transport:
     msglogo.instid = self.inst_id
     cdef char* ms = msg
     cdef long sz = size
-    ctransport.tport_putmsg(self.myring.get_buffer(), &msglogo, sz, ms)
+    status = ctransport.tport_putmsg(self.myring.get_buffer(), &msglogo, sz, ms)
+    if status == ctransport.PUT_OK:
+      return
+    else:
+      err = "Unknown"
+      if status == ctransport.PUT_NOTRACK:
+        err = "Could not track, so no message sent"
+      if status == ctransport.PUT_TOOBIG:
+        err = "Message too big for selected ring"
+      logger.warning('Problem inserting message into ring: %s', err)
+      return
     
   def getmsg_type(self, mtype):
     cdef ctransport.MSG_LOGO reqmsg

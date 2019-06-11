@@ -120,7 +120,7 @@ cdef class transport:
         err = "Could not track, so no message sent"
       if status == ctransport.PUT_TOOBIG:
         err = "Message too big for selected ring"
-      logger.warning('Problem inserting message into ring: %s', err)
+      logger.error('Problem inserting message into ring: %s', err)
       return
     
   def getmsg_type(self, mtype):
@@ -134,7 +134,14 @@ cdef class transport:
     reqmsg.instid = self.inst_id
     status = ctransport.tport_getmsg(self.myring.get_buffer(), &reqmsg, 1, &resp, &rlen, msg, 4096)
     cdef bytes realmsg = PyBytes_FromStringAndSize(msg, 4096)
-    if status != ctransport.GET_NONE: # Maybe implement a check for other status
+    if status != ctransport.GET_NONE:
+      if status == ctransport.GET_MISS:
+        logger.warning('Got a message, but missed some')
+      if status == ctransport.GET_NOTRACK:
+        logger.warning('Got a message, but NTRACK_GET was exceeded')
+      if status == ctransport.GET_TOOBIG:
+        logger.error('Message too big for buffer')
+        return(0,0)
       return (rlen, realmsg)
     else:
       return (0,0)
@@ -151,7 +158,16 @@ cdef class transport:
     reqmsg.instid = self.inst_id
     status = ctransport.tport_copyfrom(self.myring.get_buffer(), &reqmsg, 1, &resp, &rlen, msg, 4096, &seq)
     cdef bytes realmsg = PyBytes_FromStringAndSize(msg, 4096)
-    if status != ctransport.GET_NONE: # Maybe implement a check for other status
+    if status != ctransport.GET_NONE:
+      if status == ctransport.GET_MISS_LAPPED:
+        logger.warning('Got a message, but some were overwritten before we saw to them')
+      if status == ctransport.GET_MISS_SEQGAP:
+        logger.warning('Got a message, but there was a gap in seq #\'s missed msgs were either never in the ring, or too big')
+      if status == ctransport.GET_NOTRACK:
+        logger.warning('Got a message, but NTRACK_GET was exceeded')
+      if status == ctransport.GET_TOOBIG:
+        logger.error('Message too big for buffer')
+        return(0,0)
       return (status, rlen, realmsg)
     else:
       return (0,0)

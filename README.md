@@ -4,7 +4,8 @@ PyEarthWorm is a python interface to the Earthworm Messaging Transport system. I
 
 ## Installation
 
-In order to install PyEarthWorm:
+Recent binary compiled releases can be found [here](
+https://github.com/Boritech-Solutions/PyEarthWorm/releases/latest) pre-compiled for Linux and Windows intended for python 3.7. These can be placed in the dynload or DLL directory in your python path. However in order to compile and install PyEarthWorm you will need some dependencies:
 
 ### Dependencies
 

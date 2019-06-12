@@ -1,11 +1,11 @@
-# PyEarthWorm
+# PyEarthworm
 
-PyEarthWorm is a python interface to the Earthworm Messaging Transport system. It seeks to create an easy to use framework to create modern earthworm modules with python. The main class handles the EW module basics such as listening to stop messages and creating heartbeats. You can then use python threads to aquire and insert data from multiple EW Rings. Wave data is already returned as a numpy array so you may use fast c-optimized algorithms with cython. It comes with multiple examples which you may modify in order to speed up development.
+PyEarthworm is a python interface to the Earthworm Messaging Transport system. It seeks to create an easy to use framework to create modern earthworm modules with python. The main class handles the EW module basics such as listening to stop messages and creating heartbeats. You can then use python threads to aquire and insert data from multiple EW Rings. Wave data is already returned as a numpy array so you may use fast c-optimized algorithms with cython. It comes with multiple examples which you may modify in order to speed up development.
 
 ## Installation
 
 Recent binary compiled releases can be found [here](
-https://github.com/Boritech-Solutions/PyEarthWorm/releases/latest) pre-compiled for Linux and Windows intended for python 3.7. These can be placed in the dynload or DLL directory in your python path. However in order to compile and install PyEarthWorm you will need some dependencies:
+https://github.com/Boritech-Solutions/PyEarthworm/releases/latest) pre-compiled for Linux and Windows intended for python 3.7. These can be placed in the dynload or DLL directory in your python path. However in order to compile and install PyEarthworm you will need some dependencies:
 
 ### Dependencies
 
@@ -18,7 +18,7 @@ We suggest the usage of Anaconda for deployment:
 
 ### Procedure
 
-These commands take place in the PyEarthWorm directory (and having sourced the EW enviorment!):
+These commands take place in the PyEarthworm directory (and having sourced the EW enviorment!):
 
     $ cd src/
     $ python setup.py build_ext -i
@@ -135,7 +135,7 @@ Initializing with debug = True will add a much more verbose output of log messag
 use with caution.
   
 ## Examples:
-  Included with PyEarthWorm is a series of examples that may help you in figuring out how this works:
+  Included with PyEarthworm is a series of examples that may help you in figuring out how this works:
   * The Ring2Ring module is a reimagined in python Ring2Ring module. It has no way to filter, however it can be added to suit your needs. It may have multiple input and output rings and can be used to collapse multiple ring2ring instances.
   * The BNC2Ring module is essentially a NMEAString2EW module that will take input from BNC PPP and place it in a EW Ring.
   * The gsof2Ring module is a modified version of UNAVCO's python script to read gsof and insert them into an EW Ring.
@@ -170,7 +170,7 @@ I hope that you can use these examples to build your own modules that are shared
   * The python and cython community.
   
 #### AD:
-Boritech Solutions is a consulting firm that can help you set up and create modules with PyEarthWorm. Contact Us today!
+Boritech Solutions is a consulting firm that can help you set up and create modules with PyEarthworm. Contact Us today!
 www.BoritechSolutions.com
 
 ~Francisco.

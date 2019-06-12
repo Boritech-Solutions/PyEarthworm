@@ -129,6 +129,8 @@ The main class for communication with earthworm is PyEW.EWModule. It is a class 
 As of May 1, 2019 this module uses python naitive logging levels. In order to see log messages please use:
 
     import logging
+    logging.getLogger().addHandler(logging.StreamHandler())
+    logging.getLogger().setLevel(logging.INFO)
 
 You may log to stdout or stderr, or you may add a file handler to be able to see log files from this module.
 Initializing with debug = True will add a much more verbose output of log messages and might create big files,

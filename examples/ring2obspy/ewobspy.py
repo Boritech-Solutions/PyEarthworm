@@ -23,9 +23,9 @@ import numpy as np
 
 # Lets get the parameter file
 Config = configparser.ConfigParser()
-parser = argparse.ArgumentParser(description='This is a EW Tracebuff aligner')
+parser = argparse.ArgumentParser(description='This is a EW & Obspy buffer')
 
-parser.add_argument('-f', action="store", dest="ConfFile",   default="ewalign.d", type=str)
+parser.add_argument('-f', action="store", dest="ConfFile",   default="ewobspy.d", type=str)
 
 results = parser.parse_args()
 Config.read(results.ConfFile)

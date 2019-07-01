@@ -372,7 +372,7 @@ cdef class EWModule:
   
   def get_wave(self, buf_ring):
     if self.debug:
-      logger.info("Get wave from array")  
+      logger.debug("Request wave from array")  
     # Info data structs
     cdef ctracebuf.TracePacket mypkt
     cdef char* mymsg
@@ -381,6 +381,8 @@ cdef class EWModule:
     if buf_ring < len(self.ringcom) and self.OK:
       msg = self.ringcom[buf_ring].copymsg_type(19)
       if msg != (0,0):
+        if self.debug:
+          logger.info("Got wave from array")
         mymsg = msg[2]
         memcpy(&mypkt, mymsg, msg[1])
         
@@ -427,12 +429,14 @@ cdef class EWModule:
         
         return data
       else:
+        if self.debug:
+          logger.debug("Did not get wave from array, at end of memory buffer")
         return {}
     return {}
   
   def put_wave(self, buf_ring, msg):
     if self.debug:
-      logger.info("Put wave into array")
+      logger.debug("Put wave into array")
     cdef ctracebuf.TracePacket mypkt
     cdef char *mydata
     cdef char *pkt

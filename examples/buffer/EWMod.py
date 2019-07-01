@@ -103,7 +103,6 @@ class Ring2Buff():
         time_skip = 1/wave['samprate']
         for i in range(0, wave['data'].size):
             time_array[i] = (wave['startt'] + (time_skip*i)) * 1000
-        time_array = 
         
         # First instance of data in buffer, create buffer:
         self.wave_buffer[name] = wave["data"]

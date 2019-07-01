@@ -52,7 +52,7 @@ class Ring2Buff():
         return
     
     # Lets try to buffer with python dictionaries
-    name = wave["station"] +'.' + wave["channel"]
+    name = wave["station"] + '.' + wave["channel"] + '.' + wave["network"] + '.' + wave["location"]
     
     if name in self.wave_buffer :
     

@@ -72,13 +72,13 @@ set during the build of Earthworm on this machine."
         super().run()
 
 
-with open("../README.md", "r") as fh:
+with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setup(
     name='PyEarthworm',
     version='1.0.0',
-    author='Boritech Solutions',
+    author='Francisco J Hernandez Ramirez',
     url='https://github.com/Boritech-Solutions/PyEarthworm',
     ext_modules=cythonize(Extension('PyEW', ['src/PyEW.pyx'])),
     description='A Python interface to the Earthworm Seismic Data System.',

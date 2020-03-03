@@ -15,9 +15,9 @@
 #    You should have received a copy of the GNU Affero General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>
 
-# distutils: sources = src/transport.c src/sleep_ew.c src/getutil.c src/kom.c src/logit.c src/time_ew.c
-# distutils: include_dirs = inc/
-    
+# distutils: sources = src/src/transport.c src/src/sleep_ew.c src/src/getutil.c src/src/kom.c src/src/logit.c src/src/time_ew.c
+# distutils: include_dirs = src/inc/
+
 import os, sys, time, threading, logging
 from libc.string cimport memcpy, memset, strncpy
 import numpy as np
@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 
 cdef extern from "Python.h":
   bytes PyBytes_FromStringAndSize(char *v, Py_ssize_t len)
-  
+
 ## For eventual move to cython numpy
 #cimport numpy as np
 #ITYPE = np.int
@@ -44,11 +44,11 @@ cdef class ring:
   cdef ctransport.SHM_INFO shm_info
   cdef int ring_id
   cdef bint attach_status
-  
+
   def __init__(self, ringid):
     self.ring_id = ringid
     self.attach_status = False
-    
+
   def attach(self):
     if self.ring_id >= 1000:
       ctransport.tport_attach(&self.shm_info, self.ring_id)
@@ -56,15 +56,15 @@ cdef class ring:
       logger.info("Attached to ring")
     else:
       logger.warning("Could not attach to ring")
-  
+
   def detach(self):
     if self.attach_status == True:
       ctransport.tport_detach(&self.shm_info)
-      self.attach_status = False 
+      self.attach_status = False
       logger.info("Detached from ring")
     else:
       logger.warning("Could not detach from ring")
-  
+
   cdef ctransport.SHM_INFO* get_buffer(self):
     if self.attach_status == True:
      return &self.shm_info
@@ -76,16 +76,16 @@ cdef class transport:
   cdef ring myring
   cdef int mod_id
   cdef int inst_id
-    
+
   def __init__(self, ringid, mod, inst):
     self.myring = ring(ringid)
     self.mod_id = mod
     self.inst_id = inst
     self.myring.attach()
-    
+
   def detach(self):
     self.myring.detach()
-    
+
   def flush(self):
     cdef ctransport.MSG_LOGO reqmsg
     cdef ctransport.MSG_LOGO resp
@@ -99,11 +99,11 @@ cdef class transport:
       status = ctransport.tport_getmsg(self.myring.get_buffer(), &reqmsg, 1, &resp, &rlen, msg, 4096)
       if status == ctransport.GET_NONE:
         break
-  
+
   def getflag(self):
     flag = ctransport.tport_getflag(self.myring.get_buffer())
     return flag
-    
+
   def putmsg(self, mtype, msg, size):
     cdef ctransport.MSG_LOGO msglogo
     msglogo.type = mtype
@@ -122,7 +122,7 @@ cdef class transport:
         err = "Message too big for selected ring"
       logger.error('Problem inserting message into ring: %s', err)
       return
-    
+
   def getmsg_type(self, mtype):
     cdef ctransport.MSG_LOGO reqmsg
     cdef ctransport.MSG_LOGO resp
@@ -145,7 +145,7 @@ cdef class transport:
       return (rlen, realmsg)
     else:
       return (0,0)
-  
+
   def copymsg_type(self, mtype):
     cdef ctransport.MSG_LOGO reqmsg
     cdef ctransport.MSG_LOGO resp
@@ -171,9 +171,9 @@ cdef class transport:
       return (status, rlen, realmsg)
     else:
       return (0,0)
-  
+
   def reqsta(self):
-    cdef char* message 
+    cdef char* message
     message = '0\n'
     self.putmsg(108, message, len(message))
     time.sleep(5)
@@ -183,33 +183,33 @@ class heartbeatTimer(threading.Thread):
   """Heartbeat Timer class"""
   def __init__(self):
     threading.Thread.__init__(self)
-    
+
   def setup (self, mtime, mfunct):
     self.time = mtime
     self.funct = mfunct
     self.runs = True
-  
+
   def run(self):
     while self.runs:
       self.funct()
       time.sleep(self.time)
     logger.info("Heartbeat thread successfully ended")
-    
+
   def stop(self):
     logger.info("Heartbeat shutdown requested")
     self.runs = False
-    
+
 class stopThread(threading.Thread):
   """stopThread class"""
-  
+
   def __init__(self):
     threading.Thread.__init__(self)
-    
+
   def setup (self, ringid, modid, instid, mfunct):
     self.temp = transport(ringid, modid, instid)
     self.funct = mfunct
     self.runs = True
-  
+
   def run(self):
     self.temp.flush()
     while self.runs:
@@ -229,21 +229,21 @@ class stopThread(threading.Thread):
         else:
           logger.info("Stop message but, not my pid")
     logger.info("Stop thread successfully ended")
-    
+
   def stop(self):
     logger.info("Stop thread shutdown requested")
     self.runs = False
-    
+
 class restartThread(threading.Thread):
   """restartThread class"""
   def __init__(self):
     threading.Thread.__init__(self)
-    
+
   def setup (self, ringid, modid, instid, mfunct):
     self.temp = transport(ringid, modid, instid)
     self.funct = mfunct
     self.runs = True
-  
+
   def run(self):
     self.temp.flush()
     while self.runs:
@@ -258,7 +258,7 @@ class restartThread(threading.Thread):
         else:
           logger.info("Restart message, but not my pid")
     logger.info("Restart thread successfully ended")
-    
+
   def stop(self):
     logger.info("Restart thread shutdown requested")
     self.runs = False
@@ -276,7 +276,7 @@ cdef class EWModule:
   RNG = stopThread()
   RTH = restartThread()
   ringcom = []
-  
+
   def __init__(self, def_ring, mod_id, inst_id, hb_time, db = False):
     logger.info("Module initiated")
     self.my_ring = def_ring
@@ -292,14 +292,14 @@ cdef class EWModule:
     self.RTH.setup(self.my_ring, self.my_modid, self.my_instid, self.goodbye)
     self.RTH.start()
     self.OK = True
-    
+
   def send_hb(self):
     msg = str(int(round(time.time()))) + ' ' + str(os.getpid())
     mymsg = msg.encode('UTF-8')
     cdef char* message = mymsg
     if self.OK:
       self.default_ring.putmsg(3, message, len(message))
-  
+
   def goodbye(self):
     if self.OK:
       self.OK = False
@@ -312,24 +312,24 @@ cdef class EWModule:
       time.sleep(self.hb - 1)
       logger.info("Module Graceful Shutdown")
       sys.exit()
-  
+
   def mod_sta(self):
     return self.OK
-  
+
   def req_syssta(self):
     if self.OK:
       logger.info("Requesting system status")
       msg = self.default_ring.reqsta()
       status = msg[1][:msg[0]].decode('UTF-8')
       print status
-  
+
   def add_ring(self, ring_id):
     if self.OK:
       temp = transport(ring_id, self.my_modid, self.my_instid)
       temp.flush()
       logger.info("Adding ring (%i) to ring array at index (%i)", ring_id, len(self.ringcom))
       self.ringcom.append(temp)
-  
+
   def get_bytes(self, buf_ring, msg_type):
     if self.debug:
       logger.info("Get msg from array")
@@ -343,7 +343,7 @@ cdef class EWModule:
           print status
       return msg
     return ''
-  
+
   def get_msg(self, buf_ring, msg_type):
     if self.debug:
       logger.info("Get msg from array")
@@ -357,35 +357,35 @@ cdef class EWModule:
           print status
       return status
     return ''
-  
+
   def put_bytes(self, buf_ring, msg_type, msg):
     if self.debug:
       logger.info("Put msg into array")
     if buf_ring < len(self.ringcom) and self.OK:
       self.ringcom[buf_ring].putmsg(msg_type, msg, len(msg))
-  
+
   def put_msg(self, buf_ring, msg_type, msg):
     if self.debug:
       logger.info("Put msg into array")
     if buf_ring < len(self.ringcom) and self.OK:
       self.ringcom[buf_ring].putmsg(msg_type, msg.encode('UTF-8'), len(msg.encode('UTF-8')))
-  
+
   def get_wave(self, buf_ring):
     if self.debug:
-      logger.info("Get wave from array")  
+      logger.info("Get wave from array")
     # Info data structs
     cdef ctracebuf.TracePacket mypkt
     cdef char* mymsg
     cdef char* pkt
-    
+
     if buf_ring < len(self.ringcom) and self.OK:
       msg = self.ringcom[buf_ring].copymsg_type(19)
       if msg != (0,0):
         mymsg = msg[2]
         memcpy(&mypkt, mymsg, msg[1])
-        
+
         # myarr = np.array([]) JIC
-        
+
         datatype = mypkt.trh2.datatype.decode('UTF-8')
         if datatype == 'i2':
           mydata = msg[2][sizeof(ctracebuf.TRACE2_HEADER):(sizeof(ctracebuf.TRACE2_HEADER)+mypkt.trh2.nsamp*2)]
@@ -399,7 +399,7 @@ cdef class EWModule:
         if datatype == 's4':
           mydata = msg[2][sizeof(ctracebuf.TRACE2_HEADER):(sizeof(ctracebuf.TRACE2_HEADER)+(int(struct.unpack("<i", struct.pack(">i", mypkt.trh2.nsamp))[0])*4))]
           myarr = np.frombuffer(mydata, dtype=np.dtype('>i4'))
-          
+
         data = {
         'station': mypkt.trh2.sta.decode('UTF-8'),
         'network': mypkt.trh2.net.decode('UTF-8'),
@@ -411,7 +411,7 @@ cdef class EWModule:
         'endt': mypkt.trh2.endtime,
         'datatype': mypkt.trh2.datatype.decode('UTF-8'),
         'data': myarr}
-        
+
         if datatype == 's4':
           data = {
           'station': mypkt.trh2.sta.decode('UTF-8'),
@@ -424,12 +424,12 @@ cdef class EWModule:
           'endt': struct.unpack("<d", struct.pack(">d", mypkt.trh2.endtime))[0],
           'datatype': mypkt.trh2.datatype.decode('UTF-8'),
           'data': myarr}
-        
+
         return data
       else:
         return {}
     return {}
-  
+
   def put_wave(self, buf_ring, msg):
     if self.debug:
       logger.info("Put wave into array")
@@ -437,7 +437,7 @@ cdef class EWModule:
     cdef char *mydata
     cdef char *pkt
     memset(&mypkt,0,sizeof(ctracebuf.TracePacket))
-    
+
     # Set station
     if 'station' in msg:
       strncpy(mypkt.trh2.sta, msg['station'].encode('UTF-8'), ctracebuf.TRACE2_STA_LEN-1)
@@ -446,7 +446,7 @@ cdef class EWModule:
       if self.debug:
         logger.error("Station is not in trace")
       return
-      
+
     # Set network
     if 'network' in msg:
       strncpy(mypkt.trh2.net, msg['network'].encode('UTF-8'), ctracebuf.TRACE2_NET_LEN-1)
@@ -455,8 +455,8 @@ cdef class EWModule:
       if self.debug:
         logger.error("Network not in trace")
       return
-    
-    # Set channel  
+
+    # Set channel
     if 'channel' in msg:
       strncpy(mypkt.trh2.chan, msg['channel'].encode('UTF-8'), ctracebuf.TRACE2_CHAN_LEN-1)
       mypkt.trh2.chan[ctracebuf.TRACE2_CHAN_LEN-1] = '\0'
@@ -464,7 +464,7 @@ cdef class EWModule:
       if self.debug:
         logger.error("Channel name not in trace")
       return
-    
+
     # Set location
     if 'location' in msg:
       strncpy(mypkt.trh2.loc, msg['location'].encode('UTF-8'), ctracebuf.TRACE2_LOC_LEN-1)
@@ -473,7 +473,7 @@ cdef class EWModule:
       if self.debug:
         logger.error("Location not in trace")
       return
-    
+
     # Set datatype
     if 'datatype' in msg:
       strncpy(mypkt.trh2.datatype,msg['datatype'].encode('UTF-8'), 2)
@@ -482,7 +482,7 @@ cdef class EWModule:
       if self.debug:
         logger.error("Data type not in trace")
       return
-    
+
     # Set # of samps
     if 'nsamp' in msg:
       mypkt.trh2.nsamp = msg['nsamp']
@@ -492,7 +492,7 @@ cdef class EWModule:
       if self.debug:
         logger.error("Number of samples not in trace")
       return
-    
+
     # Set samp rate
     if 'samprate' in msg:
       mypkt.trh2.samprate = msg['samprate']
@@ -502,7 +502,7 @@ cdef class EWModule:
       if self.debug:
         logger.error("Sample rate not in trace")
       return
-    
+
     # Set start time
     if 'startt' in msg:
       mypkt.trh2.starttime = msg['startt']
@@ -512,7 +512,7 @@ cdef class EWModule:
       if self.debug:
         logger.error("Start time not in trace")
       return
-    
+
     # Set end time
     if 'endt' in msg:
       mypkt.trh2.endtime = msg['endt']
@@ -525,7 +525,7 @@ cdef class EWModule:
         mypkt.trh2.endtime = struct.unpack(">d", struct.pack("<d", endtime))[0]
       if self.debug:
         logger.error("End time not in trace, but continuing")
-    
+
     # Set payload
     if 'data' in msg:
       mytemp = msg['data'].tobytes('C')
@@ -535,7 +535,7 @@ cdef class EWModule:
       if self.debug:
         logger.error("No data in trace")
       return
-    
+
     if msg['datatype'] == 'i2':
       length = sizeof(ctracebuf.TRACE2_HEADER)+ (mypkt.trh2.nsamp * 2)
     if msg['datatype'] == 'i4':
@@ -546,9 +546,9 @@ cdef class EWModule:
       length = sizeof(ctracebuf.TRACE2_HEADER)+ (mypkt.trh2.nsamp * 8)
     if msg['datatype'] == 's4':
       length = sizeof(ctracebuf.TRACE2_HEADER)+ (msg['nsamp'] * 4)
-    
+
     pkt = <char*> &mypkt
-    
+
     if self.OK:
       self.ringcom[buf_ring].putmsg(19, pkt[:length], length)
 

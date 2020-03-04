@@ -84,9 +84,7 @@ setup(
     description='A Python interface to the Earthworm Seismic Data System.',
     long_description=long_description,
     long_description_content_type="text/markdown",
-    install_requires=[
-        'cython>=0.29'
-    ],
+    install_requires=['cython>=0.29', 'numpy'],
     project_urls={
         'Home Page': 'https://github.com/Boritech-Solutions/PyEarthworm',
         'Bug Tracker': 'https://github.com/Boritech-Solutions/PyEarthworm/issues',

@@ -2,7 +2,7 @@
  *   THIS FILE IS UNDER RCS - DO NOT MODIFY UNLESS YOU HAVE
  *   CHECKED IT OUT USING THE COMMAND CHECKOUT.
  *
- *    $Id: getutil.c 7116 2018-02-14 22:27:54Z baker $
+ *    $Id$
  *
  *    Revision history:
  *     $Log$
@@ -589,7 +589,7 @@ int GetUtil_LoadTableCore( int abort )
     ***************************/
       while( nfiles > nopen ) /* While there are getutil-files open */
       {
-           while(k_rd_raw(KOM_NO_EXPANSION))        /* Read next line from active file  */
+           while(k_rd())        /* Read next line from active file  */
            {
                com = k_str();         /* Get the first token from line */
 

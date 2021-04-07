@@ -3,7 +3,7 @@
  *   THIS FILE IS UNDER RCS - DO NOT MODIFY UNLESS YOU HAVE
  *   CHECKED IT OUT USING THE COMMAND CHECKOUT.
  *
- *    $Id: sleep_ew.c 3762 2010-01-02 00:39:51Z kress $
+ *    $Id$
  *
  *    Revision history:
  *     $Log$

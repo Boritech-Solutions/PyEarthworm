@@ -244,3 +244,37 @@ char *datestr23_local( double t, char *pbuf, int len )
  
    return( pbuf );
 }
+
+/**********************************************************
+ * Converts time (double, seconds since 1970:01:01) to   a null-terminated
+ *string.
+ *
+ * @param t the epoch time in seconds                     *
+ * @param pbuf pointer to the output buffer
+ * @param len the maximum number of characters (20 - 38 depending on fractional
+ *precision of seconds)
+ * @param datesep the date separator character
+ * this is displayed between date fields
+ * @param datetimesep the date time separator character
+ * this is displayed between the date and time fields
+ **********************************************************/
+char *datestrn(double t, char *pbuf, int len, char datesep, char datetimesep)
+{
+  time_t tt;     /* time as time_t                  */
+  struct tm stm; /* time as struct tm               */
+  double t_sec;  /* sec part of time */
+  
+  /* Convert double time to other formats
+   **************************************/
+  tt = (time_t)t;
+  gmtime_ew(&tt, &stm);
+  t_sec = t - tt + stm.tm_sec;
+  
+  /* Build character string
+   ************************/
+  snprintf(pbuf, len, "%04d%c%02d%c%02d%c%02d:%02d:%020.17f", stm.tm_year + 1900,
+           datesep, stm.tm_mon + 1, datesep, stm.tm_mday, datetimesep,
+           stm.tm_hour, stm.tm_min, t_sec);
+  
+  return (pbuf);
+}

@@ -1,9 +1,8 @@
-
 /*
  *   THIS FILE IS UNDER RCS - DO NOT MODIFY UNLESS YOU HAVE
  *   CHECKED IT OUT USING THE COMMAND CHECKOUT.
  *
- *    $Id: getutil.c 6059 2014-03-13 23:52:42Z paulf $
+ *    $Id: getutil.c 7116 2018-02-14 22:27:54Z baker $
  *
  *    Revision history:
  *     $Log$
@@ -57,16 +56,15 @@
  *             
  */
 
-#include <stdio.h>
 #include <stdarg.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <earthworm.h>
-#include <startstop_lib.h>
-#include <kom.h>
 
-/* external function found in logit.c */
-int logit_core( char *flag, char *format, va_list ap);
+#include "earthworm.h"
+#include "startstop_lib.h"
+#include "kom.h"
+#include "earthworm_complex_funcs.h"
 
 /* Table of shared memory ring names & their keys
  ************************************************/

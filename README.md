@@ -67,10 +67,8 @@ A file named `PyEW.cpython-36m-x86_64-linux-gnu.so` should have been created.
 
 We can test this works by importing into python:
 
-```
-python
->>> import PyEW
-```
+    $ python
+    >>> import PyEW
 
 ## Usage:
 

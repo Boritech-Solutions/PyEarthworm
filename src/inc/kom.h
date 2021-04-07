@@ -3,7 +3,7 @@
  *   THIS FILE IS UNDER RCS - DO NOT MODIFY UNLESS YOU HAVE
  *   CHECKED IT OUT USING THE COMMAND CHECKOUT.
  *
- *    $Id: kom.h 4751 2012-04-04 20:46:28Z scott $
+ *    $Id: kom.h 7446 2018-06-01 18:13:45Z baker $
  *
  *    Revision history:
  *     $Log$
@@ -22,8 +22,8 @@
 
 /* Prototypes for functions in kom.c
  ***********************************/
-int    k_open( char * );        /* open new file for k-system input     */
-int    k_open_as_ini( char * );	/* k_open w/ file in .ini format        */
+int    k_open( const char * );  /* open new file for k-system input     */
+int    k_open_as_ini( const char * ); /* k_open w/ file in .ini format  */
 void   k_treat_as_ini( void );	/* switch to .ini format                */
 void   k_treat_as_ew( void );	/* switch to ew format                  */
 int    k_close( void );         /* close current file                   */

@@ -1,35 +1,4 @@
 
-/*
- *   THIS FILE IS UNDER RCS - DO NOT MODIFY UNLESS YOU HAVE
- *   CHECKED IT OUT USING THE COMMAND CHECKOUT.
- *
- *    $Id: transport.h 4389 2011-07-08 17:58:10Z scott $
- *
- *    Revision history:
- *     $Log$
- *     Revision 1.6  2007/03/28 14:13:39  paulf
- *     minor MACOSX #ifdefs added
- *
- *     Revision 1.5  2006/03/10 13:50:56  paulf
- *     minor linux related fixes to removing _SOLARIS from the include line
- *
- *     Revision 1.4  2001/05/04 23:39:11  dietz
- *     changed SHM_HEAD.flag from short to int so it can hold processids.
- *     changed prototype for tport_putflag accordingly.
- *
- *     Revision 1.3  2000/09/07 21:56:33  lucky
- *     Changed NTRACK_PUT and NTRACK_GET to 200 and 500 respectively
- *
- *     Revision 1.2  2000/06/02 17:14:58  dietz
- *     added TPORT_FATAL definition
- *
- *     Revision 1.1  2000/02/14 20:05:54  lucky
- *     Initial revision
- *
- *
- */
-
-
     /********************************************************************/
     /*                                                                  */
     /*                          transport.h                             */
@@ -51,11 +20,12 @@
 
 /* Structure types used in transport.c */
 
+typedef unsigned long RING_INDEX_T;
 typedef struct {                   /********** shared memory header *********/
-        long             nbytes;   /* total size of shared memory region    */
-         unsigned long   keymax;   /* # usable bytes (nbytes - SHM_HEAD)    */
-volatile unsigned long   keyin;    /* index of next available byte          */
-volatile unsigned long   keyold;   /* index of oldest complete message      */
+         long            nbytes;   /* total size of shared memory region    */
+         RING_INDEX_T    keymax;   /* # usable bytes (nbytes - SHM_HEAD)    */
+volatile RING_INDEX_T    keyin;    /* index of next available byte          */
+volatile RING_INDEX_T    keyold;   /* index of oldest complete message      */
 volatile int             flag;     /* module being terminated (deprecated)  */
 } SHM_HEAD;                        /*****************************************/
 
@@ -156,7 +126,7 @@ int   tport_putmsg( SHM_INFO *, MSG_LOGO *, long, char * );
 int   tport_getmsg( SHM_INFO *, MSG_LOGO *, short, MSG_LOGO *,
                     long *, char *, long );
 int   tport_flush( SHM_INFO *, MSG_LOGO *, short, MSG_LOGO * );
-void  tport_putflag( SHM_INFO *, int );  
+void  tport_putflag( SHM_INFO *, int );
 int   tport_getflag( SHM_INFO * );
 int   tport_detachFromFlag( SHM_INFO *region, int pid );
 int   tport_buffer  ( SHM_INFO *, SHM_INFO *, MSG_LOGO *, short, unsigned,

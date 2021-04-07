@@ -381,6 +381,8 @@ cdef class EWModule:
     if buf_ring < len(self.ringcom) and self.OK:
       msg = self.ringcom[buf_ring].copymsg_type(19)
       if msg != (0,0):
+        if self.debug:
+          logger.info("Got wave from array")
         mymsg = msg[2]
         memcpy(&mypkt, mymsg, msg[1])
 
@@ -427,6 +429,8 @@ cdef class EWModule:
 
         return data
       else:
+        if self.debug:
+          logger.debug("Did not get wave from array, at end of memory buffer")
         return {}
     return {}
 

@@ -1,19 +1,19 @@
-# file: trace_buf.h 
+# file: trace_buf.h
 
 cdef extern from "inc/trace_buf.h":
   cdef const int	TRACE_STA_LEN
   cdef const int	TRACE_CHAN_LEN
-  cdef const int	TRACE_NET_LEN	
+  cdef const int	TRACE_NET_LEN
   cdef const int  TRACE_LOC_LEN
   cdef const int	TRACE2_STA_LEN
   cdef const int	TRACE2_NET_LEN
   cdef const int	TRACE2_CHAN_LEN
   cdef const int	TRACE2_LOC_LEN
 
-  cdef char TRACE2_VERSION0  
-  cdef char TRACE2_VERSION1  
-  cdef char TRACE2_VERSION11 
-  
+  cdef char TRACE2_VERSION0
+  cdef char TRACE2_VERSION1
+  cdef char TRACE2_VERSION11
+
   ctypedef struct TRACE_HEADER:
     int     pinno;
     int     nsamp;
@@ -42,14 +42,14 @@ cdef extern from "inc/trace_buf.h":
     char    datatype[3];
     char    quality[2];
     char    pad[2];
-    
+
   ctypedef struct Tv20:
     char    quality[2];
     char    pad[2];
-    
+
   ctypedef struct Tv21:
     float   conversion_factor;
-  
+
   ctypedef union Tv2:
     Tv20 v20;
     Tv21 v21;

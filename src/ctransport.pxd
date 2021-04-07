@@ -1,14 +1,14 @@
-# file: transport.h 
+# file: transport.h
 
 cdef extern from "inc/transport.h":
   ctypedef struct SHM_INFO:
     pass
-    
+
   ctypedef struct MSG_LOGO:
     unsigned char type
     unsigned char mod
-    unsigned char instid 
-  
+    unsigned char instid
+
   cdef int PUT_OK
   cdef int PUT_NOTRACK
   cdef int PUT_TOOBIG
@@ -20,7 +20,7 @@ cdef extern from "inc/transport.h":
   cdef int GET_MISS_LAPPED
   cdef int GET_MISS_SEQGAP
   cdef int TERMINATE
-  
+
   void  tport_attach( SHM_INFO *, long );
   void  tport_detach( SHM_INFO * );
   int   tport_putmsg( SHM_INFO *, MSG_LOGO *, long, char * );

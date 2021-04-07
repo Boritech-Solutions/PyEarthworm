@@ -4,30 +4,73 @@ PyEarthworm is a python interface to the Earthworm Messaging Transport system. I
 
 ## Installation
 
+### Preparation
+
+In order to install PyEarthworm, you need to have first installed Earthworm itself. This module builds successfully on Linux against earthworm-7.9 compiled with `EWBITS=64` and with "`-m64 -fPIC`" added to `GLOBALFLAGS` in `${EW_HOME}/environment/ew_linux.bash`. Your milage may vary for other versions of Earthworm, or on other platforms.
+
+To compile the PyEarthworm C extensions, we need to find the Earthworm `.h` files. We'll look in the following places:
+
+```
+${EW_HOME}/include
+${EW_HOME}/${EW_VERSION}/include
+```
+
+Thus, ensure that the `EW_HOME` and `EW_VERSION` environment variables are set apporpriately.
+
+We will also need the `CFLAGS` you used to compile earthworm with.  The value of `CFLAGS` looks something like this on a Linux system:
+
+```
+CFLAGS=-fno-stack-protector -fPIC -Dlinux -D_LINUX -D_INTEL -D_USE_SCHED -D_USE_PTHREADS -D_USE_TERMIOS -I/path/to/ew/includes
+```
+
+### Installing via pip
+
+To install via pip, ensure that you have a recent version of pip installed (>=10.0) and do:
+
+```
+pip install git+https://github.com/Boritech-Solutions/PyEarthworm
+```
+
+### Install via conda
+
+```
+conda create --name PyEW
+conda activate PyEW
+conda install numpy
+conda install cython
+```
+
+### Download a release and install manually
+
 Recent binary compiled releases can be found [here](
-https://github.com/Boritech-Solutions/PyEarthworm/releases/latest) pre-compiled for Linux and Windows intended for python 3.7. These can be placed in the dynload or DLL directory in your python path. However in order to compile and install PyEarthworm you will need some dependencies:
+https://github.com/Boritech-Solutions/PyEarthworm/releases/latest) pre-compiled for Linux and Windows intended for python 3.7. These can be placed in the dynload or DLL directory in your python path. 
 
-### Dependencies
+### Install from source
 
-We suggest the usage of Anaconda for deployment:
+```
+git clone https://github.com/cmalek/PyEarthworm
+cd PyEarthworm
+pip install cython numpy
+python setup.py install
+```
 
-    $ conda create --name PyEW
-    $ conda activate PyEW
-    $ conda install numpy
-    $ conda install cython
+### Build without installing
 
-### Procedure
+```
+git clone https://github.com/cmalek/PyEarthworm
+cd PyEarthworm
+pip install cython numpy
+python setup.py build_ext -i
+```
 
-These commands take place in the PyEarthworm directory (and having sourced the EW enviorment!):
+A file named `PyEW.cpython-36m-x86_64-linux-gnu.so` should have been created.
 
-    $ cd src/
-    $ python setup.py build_ext -i
-
-A file named PyEW.cpython-36m-x86_64-linux-gnu.so should have been created.
 We can test this works by importing into python:
 
-    $ python
-    >>> import PyEW
+```
+python
+>>> import PyEW
+```
 
 ## Usage:
 

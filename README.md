@@ -6,7 +6,7 @@ PyEarthworm is a python interface to the Earthworm Messaging Transport system. I
 
 ### Preparation
 
-In order to install PyEarthworm, you need to have first installed Earthworm itself. This module builds successfully on Linux against earthworm-7.9 compiled with `EWBITS=64` and with "`-m64 -fPIC`" added to `GLOBALFLAGS` in `${EW_HOME}/environment/ew_linux.bash`. Your milage may vary for other versions of Earthworm, or on other platforms.
+In order to install PyEarthworm, you need to have first installed Earthworm itself. This module builds successfully on Linux against earthworm-7.10 compiled with `EWBITS=64` and with "`-m64 -fPIC`" added to `GLOBALFLAGS` in `${EW_HOME}/environment/ew_linux.bash`. Your milage may vary for other versions of Earthworm, or on other platforms.
 
 To compile the PyEarthworm C extensions, we need to find the Earthworm `.h` files. We'll look in the following places:
 

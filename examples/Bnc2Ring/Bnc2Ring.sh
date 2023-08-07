@@ -86,7 +86,7 @@ def main():
       unixtime = datetime.datetime.combine(unixdate.date(),msg.timestamp)
       
       # Convert to Timestamp once more I guess
-      unxtime = int((unixtime - datetime.datetime.utcfromtimestamp(0)).total_seconds())
+      unxtime = int(time.mktime(unixtime.timetuple()))
       
       #print unxtime
       

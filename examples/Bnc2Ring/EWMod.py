@@ -101,7 +101,7 @@ class Bnc2Ring():
       unixtime = datetime.datetime.combine(unixdate.date(),msg.timestamp)
       
       # Convert to Timestamp
-      unxtime = int((unixtime - datetime.datetime.utcfromtimestamp(0)).total_seconds())
+      unxtime = int(time.mktime(unixtime.timetuple()))
       
       #print unxtime
       

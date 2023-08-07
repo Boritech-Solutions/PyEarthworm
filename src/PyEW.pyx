@@ -321,7 +321,7 @@ cdef class EWModule:
       logger.info("Requesting system status")
       msg = self.default_ring.reqsta()
       status = msg[1][:msg[0]].decode('UTF-8')
-      print status
+      print(status)
 
   def add_ring(self, ring_id):
     if self.OK:
@@ -340,7 +340,7 @@ cdef class EWModule:
         if self.debug:
           status = msg[2][:msg[1]].decode('UTF-8')
           logger.debug(status)
-          print status
+          print(status)
       return msg
     return ''
 
@@ -354,7 +354,7 @@ cdef class EWModule:
         if self.debug:
           status = msg[2][:msg[1]].decode('UTF-8')
           logger.debug(status)
-          print status
+          print(status)
       return status
     return ''
 

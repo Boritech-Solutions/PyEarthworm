@@ -351,11 +351,11 @@ cdef class EWModule:
       status = ''
       msg = self.ringcom[buf_ring].copymsg_type(msg_type)
       if msg != (0,0):
+        status = msg[2][:msg[1]].decode('UTF-8')
         if self.debug:
-          status = msg[2][:msg[1]].decode('UTF-8')
           logger.debug(status)
           print(status)
-      return status
+        return status
     return ''
 
   def put_bytes(self, buf_ring, msg_type, msg):

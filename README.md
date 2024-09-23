@@ -48,7 +48,7 @@ https://github.com/Boritech-Solutions/PyEarthworm/releases/latest) pre-compiled 
 ### Install from source
 
 ```
-git clone https://github.com/cmalek/PyEarthworm
+git clone https://github.com/Boritech-Solutions/PyEarthworm
 cd PyEarthworm
 pip install cython numpy
 python setup.py install
@@ -57,7 +57,7 @@ python setup.py install
 ### Build without installing
 
 ```
-git clone https://github.com/cmalek/PyEarthworm
+git clone https://github.com/Boritech-Solutions/PyEarthworm
 cd PyEarthworm
 pip install cython numpy
 python setup.py build_ext -i

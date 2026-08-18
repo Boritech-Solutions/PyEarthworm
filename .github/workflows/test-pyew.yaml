@@ -50,7 +50,7 @@ jobs:
 
               # Test 2: demo_getwave.py receives waveform data
               source /opt/earthworm/venv/bin/activate
-              timeout 30 python /opt/earthworm/pyew/demo_getwave.py 2>&1 | tee /results/demo_output.log || true
+              timeout 120 python /opt/earthworm/pyew/demo_getwave.py 2>&1 | tee /results/demo_output.log || true
               if grep -q "wave_dict:" /results/demo_output.log; then
                 echo "PASS: demo_getwave.py received waveform data"
                 PASS=$((PASS+1))

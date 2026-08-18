@@ -22,6 +22,7 @@ import os, sys, time, threading, logging
 from libc.string cimport memcpy, memset, strncpy
 import numpy as np
 import struct
+import re
 
 cimport ctransport
 cimport ctracebuf
@@ -146,7 +147,18 @@ cdef class transport:
     else:
       return (0,0)
 
-  def copymsg_type(self, mtype):
+  def copymsg_type(self, mtype, instid=None):
+    """Copy a message of the given type from the ring.
+
+    Args:
+      mtype: Message type ID to retrieve.
+      instid: Installation ID to filter by. None uses the module's own
+              inst_id. Set to 0 for wildcard (all installations).
+
+    Returns:
+      Tuple of (status, length, message_bytes, logo) or (0, 0) if no
+      message available.
+    """
     cdef ctransport.MSG_LOGO reqmsg
     cdef ctransport.MSG_LOGO resp
     cdef char msg[4096]
@@ -155,7 +167,7 @@ cdef class transport:
     cdef int status
     reqmsg.type = mtype
     reqmsg.mod = 0
-    reqmsg.instid = self.inst_id
+    reqmsg.instid = self.inst_id if instid is None else instid
     status = ctransport.tport_copyfrom(self.myring.get_buffer(), &reqmsg, 1, &resp, &rlen, msg, 4096, &seq)
     cdef bytes realmsg = PyBytes_FromStringAndSize(msg, 4096)
     if status != ctransport.GET_NONE:
@@ -168,7 +180,7 @@ cdef class transport:
       if status == ctransport.GET_TOOBIG:
         logger.error('Message too big for buffer')
         return(0,0)
-      return (status, rlen, realmsg)
+      return (status, rlen, realmsg, resp)
     else:
       return (0,0)
 
@@ -221,8 +233,9 @@ class stopThread(threading.Thread):
         self.temp.detach()
         self.funct()
       if inp != (0,0):
-        pid = inp[1][:inp[0]].decode('UTF-8')
-        if str(os.getpid()) in str(pid):
+        pid = inp[1][:inp[0]].decode('UTF-8').strip('\x00\n\r\t ')
+        pid_digits = re.sub(r'\D', '', pid)
+        if str(os.getpid()) == pid_digits:
           logger.info("Stop message for instance found.")
           self.temp.detach()
           self.funct()
@@ -250,8 +263,9 @@ class restartThread(threading.Thread):
       time.sleep(0.1)
       inp = self.temp.getmsg_type(107)
       if inp != (0,0):
-        pid = inp[1][:inp[0]].decode('UTF-8')
-        if str(os.getpid()) in str(pid):
+        pid = inp[1][:inp[0]].decode('UTF-8').strip('\x00\n\r\t ')
+        pid_digits = re.sub(r'\D', '', pid)
+        if str(os.getpid()) == pid_digits:
           logger.info("Restart message for instance found.")
           self.temp.detach()
           self.funct()
@@ -344,12 +358,23 @@ cdef class EWModule:
       return msg
     return ''
 
-  def get_msg(self, buf_ring, msg_type):
+  def get_msg(self, buf_ring, msg_type, instid=None):
+    """Get a message from the ring as a decoded UTF-8 string.
+
+    Args:
+      buf_ring: Index of the ring in the ringcom array.
+      msg_type: Message type ID to retrieve.
+      instid: Installation ID to filter by. None uses the module's own
+              inst_id. Set to 0 for wildcard (all installations).
+
+    Returns:
+      Decoded message string, or empty string if no message available.
+    """
     if self.debug:
       logger.info("Get msg from array")
     if buf_ring < len(self.ringcom) and self.OK:
       status = ''
-      msg = self.ringcom[buf_ring].copymsg_type(msg_type)
+      msg = self.ringcom[buf_ring].copymsg_type(msg_type, instid=instid)
       if msg != (0,0):
         status = msg[2][:msg[1]].decode('UTF-8')
         if self.debug:
@@ -370,7 +395,19 @@ cdef class EWModule:
     if buf_ring < len(self.ringcom) and self.OK:
       self.ringcom[buf_ring].putmsg(msg_type, msg.encode('UTF-8'), len(msg.encode('UTF-8')))
 
-  def get_wave(self, buf_ring):
+  def get_wave(self, buf_ring, instid=None):
+    """Get a tracebuf2 message from the ring as a dictionary.
+
+    Args:
+      buf_ring: Index of the ring in the ringcom array.
+      instid: Installation ID to filter by. None uses the module's own
+              inst_id. Set to 0 for wildcard (all installations).
+
+    Returns:
+      Dictionary with keys: station, network, channel, location, nsamp,
+      samprate, startt, endt, datatype, instid, modid, data. Returns
+      empty dict if no message available.
+    """
     if self.debug:
       logger.info("Get wave from array")
     # Info data structs
@@ -379,7 +416,7 @@ cdef class EWModule:
     cdef char* pkt
 
     if buf_ring < len(self.ringcom) and self.OK:
-      msg = self.ringcom[buf_ring].copymsg_type(19)
+      msg = self.ringcom[buf_ring].copymsg_type(19, instid=instid)
       if msg != (0,0):
         if self.debug:
           logger.info("Got wave from array")
@@ -412,6 +449,8 @@ cdef class EWModule:
         'startt': mypkt.trh2.starttime,
         'endt': mypkt.trh2.endtime,
         'datatype': mypkt.trh2.datatype.decode('UTF-8'),
+        'instid': msg[3]['instid'],
+        'modid': msg[3]['mod'],
         'data': myarr}
 
         if datatype == 's4':
@@ -425,6 +464,8 @@ cdef class EWModule:
           'startt': struct.unpack("<d", struct.pack(">d", mypkt.trh2.starttime))[0],
           'endt': struct.unpack("<d", struct.pack(">d", mypkt.trh2.endtime))[0],
           'datatype': mypkt.trh2.datatype.decode('UTF-8'),
+          'instid': msg[3]['instid'],
+          'modid': msg[3]['mod'],
           'data': myarr}
 
         return data

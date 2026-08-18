@@ -1,0 +1,16 @@
+services:
+  ew:
+    image: pyearthworm:test
+    build:
+      context: .
+      dockerfile: Dockerfile
+    platform: linux/amd64
+    volumes:
+      - type: bind
+        source: test/earthworm/run/params
+        target: /opt/earthworm/run/params
+      - type: bind
+        source: test/earthworm/pyew
+        target: /opt/earthworm/pyew
+    entrypoint: ["/opt/earthworm/bin/source_ew.sh"]
+    command: ["startstop", ">>", "/opt/earthworm/run/log/startstop_log", "2>&1", "&"]

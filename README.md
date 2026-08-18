@@ -70,6 +70,28 @@ We can test this works by importing into python:
     $ python
     >>> import PyEW
 
+## Docker
+
+A Dockerfile and docker-compose.yaml are included for building and testing PyEarthworm without a local Earthworm installation. The container uses [pre-compiled Earthworm v8.0b8 binaries](http://earthwormcentral.org) on Rocky Linux 9.6 (amd64), sets up shared memory rings via `startstop`, and includes a demo script.
+
+```
+docker compose build
+docker compose up
+```
+
+Test configuration files are in `test/earthworm/`. The container runs as `linux/amd64`.
+
+## CI/CD
+
+A GitHub Actions workflow (`.github/workflows/test-pyew.yaml`) runs on push and PR to verify:
+
+1. The Docker container builds successfully
+2. Earthworm `startstop` creates shared memory rings
+3. `demo_getwave.py` receives waveform data from the ring within 30 seconds
+4. `import PyEW` succeeds
+
+Test results are published as a JUnit report in the GitHub checks UI, and logs are uploaded as artifacts.
+
 ## Usage:
 
 A Jupyter notebook workshop can be found [here](https://github.com/Fran89/PyEarthworm_Workshop).
@@ -92,15 +114,15 @@ The main class for communication with earthworm is PyEW.EWModule. It is a class 
   This will add a ring to an internal buffer of rings. The ring id: ring_id given will add the listener. For example: Mod.add_ring(1000) will add ring **1000** at location **0**. Should you call this method again (e.g. Mod.add_ring(1005)) will add ring **1005** at location **1** and so on. You can add many rings for multiple inputs and outputs.
   
   * **PyEW.EWModule().get_bytes(buf_ring, msg_type)  
-  PyEW.EWModule().get_msg(buf_ring, msg_type):**  
-  These two methods will get either a bytestring (which you would have to decode) or a text string (which has been decoded for you) from the memory buffer at location: buf_ring __(ring must have been added from the add_ring() method in order for this to work)__ and from the message type: msg_type. Be warned get_msg will expect a null terminated string. If nothing is found it will return an empty string, otherwise it will return a python string or python bytestring.
+  PyEW.EWModule().get_msg(buf_ring, msg_type, instid=None):**  
+  These two methods will get either a bytestring (which you would have to decode) or a text string (which has been decoded for you) from the memory buffer at location: buf_ring __(ring must have been added from the add_ring() method in order for this to work)__ and from the message type: msg_type. Pass `instid=0` for wildcard (all installations), or a specific ID to filter. Default (None) uses the module's own inst_id. Be warned get_msg will expect a null terminated string. If nothing is found it will return an empty string, otherwise it will return a python string or python bytestring.
   
   * **PyEW.EWModule().put_bytes(buf_ring, msg_type, msg)  
   PyEW.EWModule().put_msg(buf_ring, msg_type, msg):**  
   Likewise these two methods will put either a bytestring or a text string into the memory buffer at location: buf_ring __(ring must have been added from the add_ring() method in order for this to work)__ with message type: msg_type. The lenght of the string is determined by the len() method.
   
-  * **PyEW.EWModule().get_wave(buf_ring):**
-  This method will attempt to retrive a wave message from the memory buffer at location: buf_ring __(ring must have been added from the add_ring() method in order for this to work)__. If it's successfull it will return a python dictionary with the following wave packet information:  
+  * **PyEW.EWModule().get_wave(buf_ring, instid=None):**
+  This method will attempt to retrive a wave message from the memory buffer at location: buf_ring __(ring must have been added from the add_ring() method in order for this to work)__. Pass `instid=0` for wildcard (all installations), or a specific ID to filter. Default (None) uses the module's own inst_id. If it's successfull it will return a python dictionary with the following wave packet information:  
   
         {
           'station': python.string,
@@ -112,6 +134,8 @@ The main class for communication with earthworm is PyEW.EWModule. It is a class 
           'startt': python.int,
           'endt': python.int,
           'datatype': python.string,
+          'modid': python.int,
+          'instid': python.int,
           'data': numpy.array
         }
         

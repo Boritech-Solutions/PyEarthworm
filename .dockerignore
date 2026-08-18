@@ -1,0 +1,9 @@
+test/earthworm/run/params/*.state
+test/earthworm/run/log/*
+.git
+*.so
+*.egg-info
+build/
+dist/
+__pycache__
+.DS_Store

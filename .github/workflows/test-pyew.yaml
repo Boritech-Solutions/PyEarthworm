@@ -1,0 +1,110 @@
+name: Build and Test PyEarthworm
+
+on:
+  push:
+    branches: [master, combined]
+  pull_request:
+    branches: [master, combined]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build container (linux/amd64)
+        run: DOCKER_BUILDKIT=1 docker build --platform linux/amd64 -t pyew-test -f Dockerfile .
+
+      - name: Start Earthworm and run demo script
+        run: |
+          mkdir -p ${{ github.workspace }}/results
+
+          docker run --platform linux/amd64 \
+            --name pyew-test \
+            -v ${{ github.workspace }}/test/earthworm/run/params:/opt/earthworm/run/params \
+            -v ${{ github.workspace }}/test/earthworm/pyew:/opt/earthworm/pyew \
+            -v ${{ github.workspace }}/results:/results \
+            pyew-test /bin/bash -c '
+              source /opt/earthworm/bin/ew_linux.bash
+
+              PASS=0
+              FAIL=0
+              REPORT=""
+
+              # Test 1: startstop creates rings
+              startstop &
+              STARTSTOP_PID=$!
+              sleep 5
+              status
+              sniffwave WAVE_RING 15 2>&1 | tee /results/sniffwave.log || true
+              if kill -0 $STARTSTOP_PID 2>/dev/null; then
+                echo "PASS: startstop is running"
+                PASS=$((PASS+1))
+                REPORT="$REPORT<testcase name=\"startstop creates rings\" classname=\"earthworm\"/>"
+              else
+                echo "FAIL: startstop exited"
+                FAIL=$((FAIL+1))
+                REPORT="$REPORT<testcase name=\"startstop creates rings\" classname=\"earthworm\"><failure message=\"startstop exited unexpectedly\"/></testcase>"
+              fi
+
+              # Test 2: demo_getwave.py receives waveform data
+              source /opt/earthworm/venv/bin/activate
+              timeout 30 python /opt/earthworm/pyew/demo_getwave.py 2>&1 | tee /results/demo_output.log || true
+              if grep -q "wave_dict:" /results/demo_output.log; then
+                echo "PASS: demo_getwave.py received waveform data"
+                PASS=$((PASS+1))
+                REPORT="$REPORT<testcase name=\"demo_getwave receives waveforms\" classname=\"pyew\"/>"
+              else
+                echo "FAIL: no waveform data received within 30 seconds"
+                FAIL=$((FAIL+1))
+                MSG=$(tail -5 /results/demo_output.log | tr "\"" "^")
+                REPORT="$REPORT<testcase name=\"demo_getwave receives waveforms\" classname=\"pyew\"><failure message=\"$MSG\"/></testcase>"
+              fi
+
+              # Test 3: PyEW imports successfully
+              deactivate
+              python -c "import PyEW; print(PyEW.__file__)" > /results/import_test.log 2>&1
+              if [ $? -eq 0 ]; then
+                echo "PASS: import PyEW"
+                PASS=$((PASS+1))
+                REPORT="$REPORT<testcase name=\"import PyEW\" classname=\"pyew\"/>"
+              else
+                echo "FAIL: import PyEW"
+                FAIL=$((FAIL+1))
+                MSG=$(cat /results/import_test.log | head -3 | tr "\"" "^")
+                REPORT="$REPORT<testcase name=\"import PyEW\" classname=\"pyew\"><failure message=\"$MSG\"/></testcase>"
+              fi
+
+              kill $STARTSTOP_PID 2>/dev/null
+              wait 2>/dev/null
+
+              TOTAL=$((PASS+FAIL))
+              cat > /results/report.xml <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <testsuites>
+            <testsuite name="PyEarthworm Integration" tests="$TOTAL" failures="$FAIL">
+              $REPORT
+            </testsuite>
+          </testsuites>
+          EOF
+
+              echo "Results: $PASS passed, $FAIL failed"
+              [ $FAIL -eq 0 ] && exit 0 || exit 1
+            '
+
+      - name: Publish test report
+        if: always()
+        uses: dorny/test-reporter@v2
+        with:
+          name: PyEW Integration Tests
+          path: results/report.xml
+          reporter: java-junit
+
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pyew-test-logs
+          path: results/
+          retention-days: 14

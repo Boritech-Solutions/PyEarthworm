@@ -1,3 +1,11 @@
+test/earthworm/run/params/*.state
+test/earthworm/run/data/*
+test/earthworm/run/log/*
+!test/earthworm/bin/
+.*
+!.github
+!.gitignore
+!.dockerignore
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -117,3 +125,9 @@ run/media/*
 *.sw*
 *.bak
 tags
+
+# IDE
+.vscode/
+
+# Earthworm state files
+*.state

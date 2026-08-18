@@ -1,0 +1,7 @@
+#!/bin/bash
+
+source "/opt/earthworm/bin/ew_linux.bash"
+if [[ $? == 0 ]]; then echo "Sourced ew_linux"; else echo "Failed to source ew_linux"; fi
+echo "Starting eacrthworm"
+startstop >> /opt/earthworm/startstop_log 2>&1 &
+if [[ $? == 0 ]]; then echo "Started earthworm"; else echo "Failed to start earthworm"; fi

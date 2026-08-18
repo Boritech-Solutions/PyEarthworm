@@ -76,7 +76,7 @@ class DemoRead:
         count = 0
         while True:
             try:
-                wave = self.module.get_wave(buf_ring, inst_id=0)
+                wave = self.module.get_wave(buf_ring, instid=0)
             except Exception as e:
                 log.warning(f"Exception while fetching wave: {e}")
                 break
